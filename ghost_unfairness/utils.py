@@ -2,6 +2,11 @@ from aif360.metrics import (
                             BinaryLabelDatasetMetric,
                             ClassificationMetric
 )
+from matplotlib.colors import to_hex
+from sklearn.linear_model import LogisticRegression 
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+import numpy as np
 
 
 def get_dataset_metrics(fd_train,
@@ -45,4 +50,32 @@ def get_classifier_metrics(clf, data,
         print('Accuracy:', metrics.accuracy())
 
         
-    return metrics.mean_difference(), metrics.disparate_impact(), metrics.accuracy()
+    return [metrics.mean_difference(), 
+            metrics.disparate_impact(), 
+            metrics.accuracy(),
+            metrics.accuracy(privileged=True),
+            metrics.accuracy(privileged=False)]
+
+def plot_lr_boundary(clf, plt, alpha, beta, di):
+    # Retrieve the model parameters.
+    b = clf.intercept_[0]
+    w1, w2 = clf.coef_.T
+    # Calculate the intercept and gradient of the decision boundary.
+    c = -b/w2
+    m = -w1/w2
+
+    # Plot the data and the classification with the decision boundary.
+    xmin, xmax = -10, 20
+    ymin, ymax = -10, 25
+    xd = np.array([xmin, xmax])
+    yd = m*xd + c
+    label = str(alpha) + '_' + str(beta) + '_' + str(di) 
+    plt.plot(xd, yd, lw=1, label=label)
+    
+def get_model_properties(model):
+    if isinstance(model, DecisionTreeClassifier):
+        return model.get_depth()
+    elif isinstance(model, LogisticRegression):
+        return model.coef_
+    elif isinstance(model, GaussianNB):
+        return model.theta_, np.sqrt(model.sigma_)

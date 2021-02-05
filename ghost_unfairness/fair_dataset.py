@@ -50,10 +50,10 @@ class FairDataset(StandardDataset):
         df = pd.DataFrame()
 
         # TODO: Use different mean and variance for each attribute
-        mu_p = 0
-        sigma_p = 5
-        mu_n = 3
-        sigma_n = 5
+        mu_ps = {'Male': 3, 'Female': 0}
+        sigma_ps = {'Male': 2, 'Female': 5}
+        mu_ns = {'Male': 10, 'Female': 10}
+        sigma_ns = {'Male': 2, 'Female': 5}
 
         if random_state:
             np.random.seed(random_state)
@@ -61,13 +61,22 @@ class FairDataset(StandardDataset):
         for d in generator:
             if _is_privileged(d, protected_attribute_names,
                               privileged_classes):
-                # 0.5 is added to get the ceiling.
                 n_samples = int(beta * n_unprivileged)
             else:
                 n_samples = n_unprivileged
 
             n_pos = int(n_samples * alpha)
             n_neg = n_samples - n_pos
+
+            mu_p = mu_ps
+            sigma_p = sigma_ps
+            mu_n = mu_ns
+            sigma_n = sigma_ns
+            for _, p in enumerate(protected_attribute_names):
+                mu_p = mu_p[d[p]]
+                sigma_p = sigma_p[d[p]]
+                mu_n = mu_n[d[p]]
+                sigma_n = sigma_n[d[p]]
 
             features = sigma_p * np.random.randn(n_pos, n_features) + mu_p
             group_df_pos = pd.DataFrame(features)
