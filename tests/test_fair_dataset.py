@@ -6,7 +6,7 @@ from itertools import product
 from aif360.metrics import BinaryLabelDatasetMetric
 from ghost_unfairness.fair_dataset import FairDataset
 from ghost_unfairness.fair_dataset import(
-    _get_groups, _is_privileged
+    _get_groups, _is_privileged, default_mappings
 )
 
 
@@ -16,7 +16,7 @@ class TestFairDataset(TestCase):
     privileged_classes = [['Male'], ['Caucasian']]
 
     privileged_group = [{'sex': 1, 'race': 1}]
-    unprivileged_group = [{'sex': 0}, {'race': 0}]
+    unprivileged_group = [{'sex': 0}, {'sex': 1, 'race': 0}]
 
     mapping = [{1.0: 'Male', 0.0: 'Female'},
                {1.0: 'Caucasian', 0.0: 'Not Caucasian'}]
@@ -26,30 +26,34 @@ class TestFairDataset(TestCase):
         n_unprivileged = 10
         alphas = [0, 0.25, 0.5, 0.75, 1]
         for alpha, beta in product(alphas, betas):
-            print(alpha, beta, n_unprivileged)
+            # print(alpha, beta, n_unprivileged)
             try:
                 self._test_init(alpha, beta, n_unprivileged)
             except ValueError:
                 assert True
 
     def _test_init(self, alpha, beta, n_unprivileged):
-        fd = FairDataset(n_unprivileged, 5,
+        metadata = default_mappings.copy()
+        metadata['protected_attribute_maps'] = self.mapping
+        fd = FairDataset(n_unprivileged, 3,
                          protected_attribute_names=self.protected,
                          privileged_classes=self.privileged_classes,
                          beta=beta,
-                         alpha=alpha)
+                         alpha=alpha,
+                         metadata=metadata)
 
         df, _ = fd.convert_to_dataframe()
         groups, counts = np.unique(df[self.protected],
                                    axis=0,
                                    return_counts=True)
-        print(counts)
+        # print(counts)
         # Test correct number of instance in each group.
         for i in range(len(groups)):
             group = {}
             for j in range(len(self.protected)):
                 p = self.protected[j]
                 group[p] = self.mapping[j][groups[i][j]]
+
             if _is_privileged(group, self.protected,
                               self.privileged_classes):
                 assert np.ceil(beta * n_unprivileged) == counts[i]
@@ -107,7 +111,7 @@ class TestFairDataset(TestCase):
                          )
 
         fd_unpriv = fd.get_unprivileged_group()
-        print(fd_unpriv.convert_to_dataframe())
+        # print(fd_unpriv.convert_to_dataframe())
 
         # TODO: Check types of each attribute
         # TODO: Check the feature values of each
@@ -117,7 +121,7 @@ class TestFairDataset(TestCase):
         mapping = [{1.0: 'Male', 0.0: 'Female'},
                    {1.0: 'Caucasian', 0.0: 'Not Caucasian'}]
 
-        groups = _get_groups(self.protected,
+        groups = _get_groups(['sex', 'race'],
                              mapping)
 
         group_results = [{'sex': 'Female', 'race': 'Not Caucasian'},
@@ -146,3 +150,12 @@ class TestFairDataset(TestCase):
                                  self.protected,
                                  [['Male'], ['Caucasian', 'Not Caucasian']])
         assert boolean
+
+
+    def test_get_group_config(self):
+        fd = FairDataset(2, 2,
+                         protected_attribute_names=['sex', 'race'],
+                         privileged_classes=[['Male'], ['Caucasian']],
+                         )
+        print(fd.unprivileged_group)
+        print(fd.privileged_group)

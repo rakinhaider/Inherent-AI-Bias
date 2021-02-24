@@ -7,13 +7,14 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 import numpy as np
+from ghost_unfairness.fair_dataset import FairDataset
 
 
 def get_dataset_metrics(fd_train,
-                         unprivileged_groups,
-                         privileged_groups,
-                         verbose=False):
+                        verbose=False):
 
+    unprivileged_groups = fd_train.unprivileged_groups
+    privileged_groups = fd_train.privileged_groups
     metrics = BinaryLabelDatasetMetric(fd_train,
                    unprivileged_groups=unprivileged_groups,
                    privileged_groups=privileged_groups)
@@ -30,10 +31,11 @@ def get_dataset_metrics(fd_train,
 
 
 def get_classifier_metrics(clf, data,
-                      unprivileged_groups,
-                      privileged_groups,
-                      verbose=False):
+                           verbose=False):
 
+    unprivileged_groups = data.unprivileged_groups
+    privileged_groups = data.privileged_groups
+    
     data_pred = data.copy()
     data_x, data_y = data.get_xy(keep_protected=False)
     data_pred.labels = clf.predict(data_x)
@@ -79,3 +81,53 @@ def get_model_properties(model):
         return model.coef_
     elif isinstance(model, GaussianNB):
         return model.theta_, np.sqrt(model.sigma_)
+    
+def get_datasets(n_samples, n_features, 
+                 train_random_state=47, test_random_state=23,
+                 **kwargs):
+    train_fd = FairDataset(n_samples, n_features, **kwargs,
+                      random_state=train_random_state)
+    test_fd = FairDataset(n_samples//2, n_features, **kwargs,
+                         random_state=test_random_state)
+    return train_fd, test_fd
+
+def train_model(model_type, data, params):
+    
+    x, y = data.get_xy(keep_protected=False)
+    
+    model = model_type()
+    # params[variant] = val
+    model.set_params(**params)
+
+    model = model.fit(x, y)
+
+    return model
+
+def get_groupwise_preformance(train_fd, test_fd, model_type,
+                              privileged=None,
+                              params=None):
+    if privileged == True:
+        train_fd = train_fd.get_privileged_group()
+        
+    elif privileged == False:
+        train_fd = train_fd.get_unprivileged_group()
+        
+    if not params:
+        params = get_model_params(model_type)
+    
+    model = train_model(model_type, train_fd, params)
+    results = get_classifier_metrics(model, test_fd,
+                                     verbose=False)
+    
+    return model, results
+
+def get_model_params(model_type):
+    if model_type == DecisionTreeClassifier:
+        params = {'criterion':'entropy',
+              'random_state': 47} 
+    elif model_type == LogisticRegression:
+        params = {'class_weight': 'balanced',
+                  'solver': 'liblinear'}
+    elif model_type == GaussianNB:
+        params = {}
+    return params
