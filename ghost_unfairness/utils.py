@@ -8,6 +8,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 import numpy as np
 from ghost_unfairness.fair_dataset import FairDataset
+from copy import deepcopy
 
 
 def get_dataset_metrics(fd_train,
@@ -58,7 +59,7 @@ def get_classifier_metrics(clf, data,
             metrics.accuracy(privileged=True),
             metrics.accuracy(privileged=False)]
 
-def plot_lr_boundary(clf, plt, alpha, beta, di):
+def plot_lr_boundary(clf, plt, label):
     # Retrieve the model parameters.
     b = clf.intercept_[0]
     w1, w2 = clf.coef_.T
@@ -71,8 +72,9 @@ def plot_lr_boundary(clf, plt, alpha, beta, di):
     ymin, ymax = -10, 25
     xd = np.array([xmin, xmax])
     yd = m*xd + c
-    label = str(alpha) + '_' + str(beta) + '_' + str(di) 
     plt.plot(xd, yd, lw=1, label=label)
+    if label:
+        plt.legend()
     
 def get_model_properties(model):
     if isinstance(model, DecisionTreeClassifier):
@@ -82,12 +84,13 @@ def get_model_properties(model):
     elif isinstance(model, GaussianNB):
         return model.theta_, np.sqrt(model.sigma_)
     
-def get_datasets(n_samples, n_features, 
-                 train_random_state=47, test_random_state=23,
-                 **kwargs):
-    train_fd = FairDataset(n_samples, n_features, **kwargs,
+def get_datasets(n_samples, n_features, kwargs,
+                 train_random_state=47, test_random_state=23):
+    temp_kwargs = deepcopy(kwargs)
+    train_fd = FairDataset(n_samples, n_features, **temp_kwargs,
                       random_state=train_random_state)
-    test_fd = FairDataset(n_samples//2, n_features, **kwargs,
+    temp_kwargs = deepcopy(kwargs)
+    test_fd = FairDataset(n_samples//2, n_features, **temp_kwargs,
                          random_state=test_random_state)
     return train_fd, test_fd
 
