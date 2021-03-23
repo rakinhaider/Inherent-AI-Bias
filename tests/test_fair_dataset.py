@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 import numpy as np
+import pandas as pd
 from itertools import product
 
 from aif360.metrics import BinaryLabelDatasetMetric
@@ -21,6 +22,25 @@ class TestFairDataset(TestCase):
     mapping = [{1.0: 'Male', 0.0: 'Female'},
                {1.0: 'Caucasian', 0.0: 'Not Caucasian'}]
 
+    def test_non_redlining(self):
+        np.random.seed(23)
+        beta = 1
+        n_unprivileged = 10000
+        alpha = 0.5
+        metadata = default_mappings.copy()
+        metadata['protected_attribute_maps'] = self.mapping
+        fd = FairDataset(n_unprivileged, 3, 1,
+                         protected_attribute_names=self.protected,
+                         privileged_classes=self.privileged_classes,
+                         beta=beta,
+                         alpha=alpha,
+                         metadata=metadata)
+
+        df, _ = fd.convert_to_dataframe()
+        pd.set_option('display.max_columns', None)
+        print(df[df['label'] == 1].describe())
+        print(df[df['label'] == 0].describe())
+
     def test_init(self):
         betas = [0.5, 1, 2]
         n_unprivileged = 10
@@ -35,7 +55,7 @@ class TestFairDataset(TestCase):
     def _test_init(self, alpha, beta, n_unprivileged):
         metadata = default_mappings.copy()
         metadata['protected_attribute_maps'] = self.mapping
-        fd = FairDataset(n_unprivileged, 3,
+        fd = FairDataset(n_unprivileged, 3, 1,
                          protected_attribute_names=self.protected,
                          privileged_classes=self.privileged_classes,
                          beta=beta,
@@ -80,7 +100,7 @@ class TestFairDataset(TestCase):
         # you will need to de_dummy the dataframe.
         protected_classes_values = [[1], [1]]
 
-        fd = FairDataset(2, 2,
+        fd = FairDataset(2, 2, 1,
                          protected_attribute_names=self.protected,
                          privileged_classes=self.privileged_classes,
                          )
@@ -105,7 +125,7 @@ class TestFairDataset(TestCase):
         # TODO: Match types of each attribute
 
     def test_get_unprivileged_group(self):
-        fd = FairDataset(2, 2,
+        fd = FairDataset(2, 2, 1,
                          protected_attribute_names=self.protected,
                          privileged_classes=self.privileged_classes,
                          )
@@ -150,12 +170,3 @@ class TestFairDataset(TestCase):
                                  self.protected,
                                  [['Male'], ['Caucasian', 'Not Caucasian']])
         assert boolean
-
-
-    def test_get_group_config(self):
-        fd = FairDataset(2, 2,
-                         protected_attribute_names=['sex', 'race'],
-                         privileged_classes=[['Male'], ['Caucasian']],
-                         )
-        print(fd.unprivileged_group)
-        print(fd.privileged_group)

@@ -1,5 +1,7 @@
+matplotlib
 pandas
 numpy
 sklearn
 notebook
 aif360
+imblearn
