@@ -74,7 +74,6 @@ def synthetic(dataset, unprivileged_groups,
 
     # make a duplicate copy of the input data
     dataset_transf_train = dataset.copy(deepcopy=True)
-
     # case: if privileged is favored, i.e. has a higher base rate
 
     # [Method 1] inflate privileged unfavored class

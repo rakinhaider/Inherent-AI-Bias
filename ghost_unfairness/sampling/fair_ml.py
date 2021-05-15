@@ -160,7 +160,7 @@ elif DATASET == 'bank':
     sens_attr = dataset_orig.protected_attribute_names[0]
 
 elif DATASET == 'german':
-    # 1:age ,2: foreign
+    # 1:age, 2: foreign
     protected_attribute_used = 1
     if protected_attribute_used == 1:
         privileged_groups = [{'age': 1}]

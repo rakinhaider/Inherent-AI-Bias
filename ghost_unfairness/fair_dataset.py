@@ -144,6 +144,9 @@ class FairDataset(StandardDataset):
                                           features_to_drop=features_to_drop, na_values=na_values,
                                           custom_preprocessing=custom_preprocessing, metadata=metadata)
 
+    # This is a poor hack to make it work.
+    # Need to rethink the project design.
+    # FairDataset should inherit only BinaryLabelDataset
     def update_from_dataset(self, dataset):
         for key in dataset.__dict__:
             self.__dict__[key] = dataset.__dict__[key]

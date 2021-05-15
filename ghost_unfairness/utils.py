@@ -8,6 +8,11 @@ from sklearn.naive_bayes import GaussianNB
 import numpy as np
 from ghost_unfairness.fair_dataset import FairDataset, default_mappings
 from copy import deepcopy
+from scipy.special import erf
+from math import sqrt
+import scipy.stats as stats
+import math
+import matplotlib.pyplot as plt
 
 
 def get_single_prot_default_map():
@@ -37,16 +42,14 @@ def get_dataset_metrics(fd_train,
 
 def get_positive_rate(cmetrics, privileged=None, positive=True):
     if positive:
-        # Compute Delta_A^+
         return cmetrics.true_positive_rate(privileged)
     else:
-        # Compute Delta_A^-
         return cmetrics.false_positive_rate(privileged)
 
 
 def get_classifier_metrics(clf, data,
                            verbose=False,
-                           pos_rate=False):
+                           sel_rate=False):
     unprivileged_groups = data.unprivileged_groups
     privileged_groups = data.privileged_groups
 
@@ -71,10 +74,11 @@ def get_classifier_metrics(clf, data,
          metrics.accuracy(privileged=True),
          metrics.accuracy(privileged=False)]
 
-    if pos_rate:
+    if sel_rate:
         for pg in [True, False]:
-            for pos_rate in [True, False]:
-                m.append(get_positive_rate(metrics, pg, pos_rate))
+            for sel_rate in [True, False]:
+                m.append(get_positive_rate(metrics, pg, sel_rate))
+
     return m
 
 
@@ -144,7 +148,7 @@ def get_groupwise_performance(train_fd, test_fd, model_type,
     model = train_model(model_type, train_fd, params)
     results = get_classifier_metrics(model, test_fd,
                                      verbose=False,
-                                     pos_rate=pos_rate)
+                                     sel_rate=pos_rate)
 
     return model, results
 
@@ -159,4 +163,62 @@ def get_model_params(model_type):
                   'solver': 'liblinear'}
     elif model_type == GaussianNB:
         params = {}
+    else:
+        params = {}
     return params
+
+
+def di_theta(delta_mu_c, delta_mu_a, sigma_u, sigma_p):
+    num = 2 
+    num += erf((delta_mu_c - delta_mu_a)/(sqrt(2)*sigma_u))
+    num -= erf((delta_mu_c + delta_mu_a)/(sqrt(2)*sigma_u))
+    
+    denom = 2
+    denom += erf((delta_mu_c + delta_mu_a)/(sqrt(2)*sigma_p))
+    denom -= erf((delta_mu_c - delta_mu_a)/(sqrt(2)*sigma_p))
+    
+    return num/denom
+
+
+def di_theta_u(delta_mu_c, delta_mu_a, sigma_u, sigma_p):
+    num = 2 
+    
+    denom = 2
+    denom += erf((delta_mu_c + 2 * delta_mu_a)/(sqrt(2)*sigma_p))
+    denom -= erf((delta_mu_c - 2 * delta_mu_a)/(sqrt(2)*sigma_p))
+    
+    return num/denom
+    
+
+def report(delta_mu_c, delta_mu_a, sigma_u, sigma_p, verbose=True):
+    if verbose:
+        print('Positive Prediction Rate in Unprivileged Group (Optimal Classifier)')
+        print((2+erf((delta_mu_c - delta_mu_a)/(sqrt(2)*sigma_u)) - 
+               erf((delta_mu_c + delta_mu_a)/(sqrt(2)*sigma_u)))/4)
+        print(1)
+        print('Positive Prediction Rate in Privileged Group (Optimal Classifier)')
+        print((2+erf((delta_mu_c + delta_mu_a)/(sqrt(2)*sigma_p)) - 
+               erf((delta_mu_c - delta_mu_a)/(sqrt(2)*sigma_p)))/4)
+        print('Positive Prediction Rate in Unprivileged Group (Unprivileged Classifier)')
+        print((2 + erf((delta_mu_c)/(sqrt(2)*sigma_p)) - 
+               erf((delta_mu_c)/(sqrt(2)*sigma_p)))/4)
+        print('Positive Prediction Rate in Privileged Group (Unprivileged Classifier)')
+        print((2 + erf((delta_mu_c + 2 * delta_mu_a)/(sqrt(2)*sigma_p)) - 
+               erf((delta_mu_c - 2 * delta_mu_a)/(sqrt(2)*sigma_p)))/4)
+    print('DI(theta_u)')
+    print(di_theta_u(delta_mu_c, delta_mu_a, sigma_u, sigma_p))
+    print('DI(theta)')
+    print(di_theta(delta_mu_c, delta_mu_a, sigma_u, sigma_p))
+
+    
+def plot_normal(mu, sigma, label=None):
+    x = np.linspace(mu - 3*sigma, mu + 3*sigma, 100)
+    plt.plot(x, stats.norm.pdf(x, mu, sigma), label=label)
+    
+def plot_non_linear_boundary(mu1, mu2, sigma1, sigma2, p, d, label=None):
+    x = np.linspace(-200, 200, 10000)
+    y = np.log(p/(1-p)) - d*np.log(sigma1/sigma1) 
+    y -= 1/(2*sigma1**2)*(x-mu1)**2 
+    y += 1/(2*sigma2**2)*(x-mu2)**2
+    plt.plot(x, y, label=label)
+    plt.legend()
