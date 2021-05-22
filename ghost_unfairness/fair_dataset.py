@@ -46,9 +46,7 @@ class FairDataset(StandardDataset):
                 
                 See :obj:`StandardDataset` for a description of the arguments.
         """
-        if random_state:
-            np.random.seed(random_state)
-
+        
         _validate_alpha_beta(alpha, beta, n_unprivileged)
         generator = _get_groups(protected_attribute_names,
                                 metadata['protected_attribute_maps'])
@@ -75,11 +73,19 @@ class FairDataset(StandardDataset):
             print(mu_ns)
             print(sigma_ns)
 
+            
+        np.random.seed(47)
+
         # Feature means and variances.
         feat_mu_ps = [np.random.randint(0, 10)] * n_features
         feat_sigma_ps = [np.random.randint(1, 10)] * n_features
-        feat_mu_ns = [np.random.randint(0, 10)] * n_features
-        feat_sigma_ns = [np.random.randint(1, 10)] * n_features
+        # feat_mu_ns = [np.random.randint(0, 10)] * n_features
+        # feat_sigma_ns = [np.random.randint(1, 10)] * n_features
+        feat_mu_ns = feat_mu_ps
+        feat_sigma_ns = feat_sigma_ps
+        
+        if random_state:
+            np.random.seed(random_state)
 
         if verbose:
             print(feat_mu_ps)

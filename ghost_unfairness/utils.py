@@ -14,7 +14,6 @@ import scipy.stats as stats
 import math
 import matplotlib.pyplot as plt
 
-
 def get_single_prot_default_map():
     metadata = default_mappings.copy()
     metadata['protected_attribute_maps'] = [{1.0: 'Male', 0.0: 'Female'}]
@@ -70,14 +69,15 @@ def get_classifier_metrics(clf, data,
 
     m = [metrics.mean_difference(),
          metrics.disparate_impact(),
+         abs(1 - metrics.disparate_impact()),
          metrics.accuracy(),
          metrics.accuracy(privileged=True),
          metrics.accuracy(privileged=False)]
 
     if sel_rate:
         for pg in [True, False]:
-            for sel_rate in [True, False]:
-                m.append(get_positive_rate(metrics, pg, sel_rate))
+            for sr in [True, False]:
+                m.append(get_positive_rate(metrics, pg, sr))
 
     return m
 
@@ -138,7 +138,7 @@ def get_groupwise_performance(train_fd, test_fd, model_type,
                               pos_rate=False):
     if privileged:
         train_fd = train_fd.get_privileged_group()
-
+        
     elif privileged == False:
         train_fd = train_fd.get_unprivileged_group()
 
@@ -162,7 +162,8 @@ def get_model_params(model_type):
         params = {'class_weight': 'balanced',
                   'solver': 'liblinear'}
     elif model_type == GaussianNB:
-        params = {}
+        params = {'priors':[0.5, 0.5]}
+        # params = {}
     else:
         params = {}
     return params
@@ -192,7 +193,6 @@ def di_theta_u(delta_mu_c, delta_mu_a, sigma_u, sigma_p):
 
 def report(delta_mu_c, delta_mu_a, sigma_u, sigma_p, verbose=True):
     if verbose:
-        print('Positive Prediction Rate in Unprivileged Group (Optimal Classifier)')
         print((2+erf((delta_mu_c - delta_mu_a)/(sqrt(2)*sigma_u)) - 
                erf((delta_mu_c + delta_mu_a)/(sqrt(2)*sigma_u)))/4)
         print(1)
