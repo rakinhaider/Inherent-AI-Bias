@@ -7,6 +7,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 import numpy as np
 from ghost_unfairness.fair_dataset import FairDataset, default_mappings
+from ghost_unfairness.ds_fair_dataset import DSFairDataset
 from copy import deepcopy
 from scipy.special import erf
 from math import sqrt
@@ -111,12 +112,26 @@ def get_model_properties(model):
 
 def get_datasets(n_samples, n_features, n_redlin, kwargs,
                  train_random_state=47, test_random_state=23):
-    temp_kwargs = deepcopy(kwargs)
-    train_fd = FairDataset(n_samples, n_features, n_redlin,
+    if kwargs['ds']:
+        temp_kwargs = deepcopy(kwargs)
+        del temp_kwargs['ds']
+        train_fd = DSFairDataset(
+            n_samples, n_features, n_redlin, **temp_kwargs,
+            random_state=train_random_state
+        )
+        temp_kwargs = deepcopy(kwargs)
+        del temp_kwargs['ds']
+        test_fd = DSFairDataset(n_samples // 2, n_features, n_redlin,
+                                **temp_kwargs, random_state=test_random_state)
+    else:     
+        temp_kwargs = deepcopy(kwargs)
+        del temp_kwargs['ds']
+        train_fd = FairDataset(n_samples, n_features, n_redlin,
                            **temp_kwargs, random_state=train_random_state)
-    temp_kwargs = deepcopy(kwargs)
-    test_fd = FairDataset(n_samples // 2, n_features, n_redlin,
-                          **temp_kwargs, random_state=test_random_state)
+        temp_kwargs = deepcopy(kwargs)
+        del temp_kwargs['ds']
+        test_fd = FairDataset(n_samples // 2, n_features, n_redlin,
+                              **temp_kwargs, random_state=test_random_state)
     return train_fd, test_fd
 
 
@@ -162,8 +177,8 @@ def get_model_params(model_type):
         params = {'class_weight': 'balanced',
                   'solver': 'liblinear'}
     elif model_type == GaussianNB:
-        params = {'priors':[0.5, 0.5]}
-        # params = {}
+        # params = {'priors':[0.1, 0.9]}
+        params = {}
     else:
         params = {}
     return params
