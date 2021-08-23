@@ -7,7 +7,7 @@ from aif360.metrics import utils
 from ghost_unfairness.sampling.myutils import balance
 
 # return dataset indices of unprivileged and privileaged groups
-def group_indices (dataset, unprivileged_groups):
+def group_indices(dataset, unprivileged_groups):
     feature_names = dataset.feature_names
     cond_vec = utils.compute_boolean_conditioning_vector(dataset.features, feature_names, unprivileged_groups)
 
@@ -17,9 +17,9 @@ def group_indices (dataset, unprivileged_groups):
     return indices, priv_indices
 
 # oversample unfavorable in the privileged group
-def synthetic_unfavor_priv (dataset, unprivileged_groups, bp, bnp, f_label, uf_label, sampling_strategy=1.00):
+def synthetic_unfavor_priv(dataset, unprivileged_groups, bp, bnp, f_label, uf_label, sampling_strategy=1.00):
 
-    indices, priv_indices = group_indices (dataset, unprivileged_groups)
+    indices, priv_indices = group_indices(dataset, unprivileged_groups)
 
     # subset: unprivileged--unprivileged_dataset and privileged--privileged_dataset 
     unprivileged_dataset = dataset.subset(indices) # unprivileaged

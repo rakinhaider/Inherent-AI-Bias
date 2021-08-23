@@ -1,7 +1,5 @@
 import sys
 
-sys.path.insert(1, "../")
-
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.naive_bayes import GaussianNB

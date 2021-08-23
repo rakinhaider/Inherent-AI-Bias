@@ -56,6 +56,7 @@ def get_pos_neg_by_group(dataset, group):
 def get_samples_by_group(dataset, n_samples, group, label):
     indices = get_indices(dataset, group, label)
     indices = np.random.choice(indices, n_samples, replace=False)
+    print(indices[:10])
     return indices
 
 
@@ -178,7 +179,7 @@ if __name__ == "__main__":
             description="Homework 2",
     )
     args.add_argument("-d", "--data",
-              help="dataset: compas, german, bank",
+              choices=["compas", "german", "bank"],
               default='compas'
     )
     args.add_argument('-k', '--k-fold',
@@ -213,6 +214,7 @@ if __name__ == "__main__":
                ]
     results = pd.DataFrame(columns=columns)
     for i in range(0, int(args.k_fold)):
+        np.random.seed(i)
         fd_test = get_real_fd(dataset_balanced)
         pmod, p_result = get_groupwise_performance(fd_train, fd_test, model_type,
                                                    privileged=True, pos_rate=True)
@@ -235,4 +237,4 @@ if __name__ == "__main__":
             print("------------VIOLATION-----------------")
 
     title = '_'.join([args.data, args.model_type])
-    results.to_csv('outputs/' + title + '.csv', sep='\t')
+    results.to_csv('outputs/' + title + '.tsv', sep='\t')

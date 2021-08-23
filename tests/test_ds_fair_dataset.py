@@ -25,17 +25,18 @@ class TestDSFairDataset(TestCase):
         alpha = 0.5
         metadata = default_mappings.copy()
         metadata['protected_attribute_maps'] = self.mapping
-        fd = DSFairDataset(n_unprivileged, 3, 3,
+        fd = DSFairDataset(n_unprivileged, 2, 1,
                            protected_attribute_names=self.protected,
                            privileged_classes=self.privileged_classes,
                            beta=beta,
                            alpha=alpha,
                            metadata=metadata,
                            shift_random=2,
-                           shift_priv=None)
+                           shift_priv=None,
+                           verbose=True,
+                           n_dep_feat=1)
 
         df, _ = fd.convert_to_dataframe()
-        print(df)
 
         groups = df.groupby(['sex', 'label'])
 
