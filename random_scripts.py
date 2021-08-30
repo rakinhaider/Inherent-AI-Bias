@@ -4,9 +4,10 @@ from aif360.metrics import BinaryLabelDatasetMetric as BM
 import numpy as np
 from imblearn.over_sampling import ADASYN
 import random
+from aif360.datasets import CompasDataset
 
 
-if __name__ == "__main__":
+def investigate_sampling():
     data = get_dataset('compas')
     p_group, u_group = get_group_dicts(data)
     print(u_group)
@@ -99,8 +100,13 @@ if __name__ == "__main__":
     # compose transformed dataset
     dataset_transf_train.features = np.concatenate((uf_dataset.features, X))
     dataset_transf_train.labels = np.concatenate((uf_dataset.labels, y))
-    dataset_transf_train.instance_weights = np.concatenate((uf_dataset.instance_weights, f_dataset.instance_weights, new_weights))
-    dataset_transf_train.protected_attributes = np.concatenate((uf_dataset.protected_attributes, f_dataset.protected_attributes, new_attributes))
+    dataset_transf_train.instance_weights = np.concatenate(
+        (uf_dataset.instance_weights, f_dataset.instance_weights, new_weights)
+    )
+    dataset_transf_train.protected_attributes = np.concatenate(
+        (uf_dataset.protected_attributes, f_dataset.protected_attributes,
+         new_attributes)
+    )
 
     # make a duplicate copy of the input data
     dataset_extra_train = data.copy()
@@ -119,3 +125,36 @@ if __name__ == "__main__":
     dataset_extra_train.labels = y_ex
     dataset_extra_train.instance_weights = np.array(new_weights)
     dataset_extra_train.protected_attributes = np.array(new_attributes)
+
+
+def investigate_aif360_compas():
+    dataset = CompasDataset(
+        protected_attribute_names=['race'],
+        privileged_classes=[['Caucasian']],
+        features_to_drop=['sex'],
+        metadata={'label_maps': [{0.0: 'Did recid.', 1.0: 'No recid.'}],
+                  'protected_attribute_maps': [{1.0: 'Caucasian',
+                                                0.0: 'Not Caucasian'}]},
+        favorable_classes=[0]
+
+    )
+    print(dataset.features[0:5, 0:10])
+    print(dataset.labels[0:5])
+    print(dataset.protected_attributes[0:5])
+    print(dataset.protected_attribute_names)
+    print(dataset.feature_names)
+    df, _ = dataset.convert_to_dataframe()
+    print(df.head()[['age', 'race']])
+    print(len(df))
+    print(dataset.label_names)
+    print((df[dataset.label_names] == 1).astype(int).sum())
+
+    grouped = df.groupby(['race'])
+    for r, grp in grouped:
+        print(r, len(grp))
+        print(grp[dataset.label_names[0]].value_counts())
+        print(grp[dataset.label_names[0]].value_counts()/len(grp))
+
+
+if __name__ == "__main__":
+    investigate_aif360_compas()

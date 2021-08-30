@@ -31,11 +31,11 @@ def print_model_performances(model, test_fd, res_constraint=None):
     print(metrics.binary_confusion_matrix())
     print('SR\t', metrics.selection_rate())
 
-    print('PCNFM\t', metrics.binary_confusion_matrix(privileged=True))
+    # print('PCNFM\t', metrics.binary_confusion_matrix(privileged=True))
     print('PSR\t', metrics.selection_rate(privileged=True))
     print('PFPR\t', metrics.false_positive_rate(privileged=True))
     print('PFDR\t', metrics.false_discovery_rate(privileged=True))
-    print('UCNFM\t', metrics.binary_confusion_matrix(privileged=False))
+    # print('UCNFM\t', metrics.binary_confusion_matrix(privileged=False))
     print('USR\t', metrics.selection_rate(privileged=False))
     print('UFPR\t', metrics.false_positive_rate(privileged=False))
     print('UFDR\t', metrics.false_discovery_rate(privileged=False))
@@ -81,8 +81,8 @@ if __name__ == "__main__":
         print('alpha', alpha)
         kwargs['alpha'] = alpha
         kwargs['verbose'] = False
-        train_fd, test_fd = get_datasets(10000, 2, 1, kwargs,
-                                         test_random_state=23)
+        train_fd, test_fd = get_datasets(10000, 0, 1, kwargs,
+                                         test_random_state=41)
         pmod, pmod_results = get_groupwise_performance(train_fd, test_fd,
                                             model_type, privileged=True)
         umod, umod_results = get_groupwise_performance(train_fd, test_fd,
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
         print(test_fd.privileged_groups)
 
-        if True:
+        if False:
             print('Theta')
             print(pmod.theta_)
             print(umod.theta_)
@@ -105,14 +105,18 @@ if __name__ == "__main__":
 
             print(mod.class_prior_)
 
+        """
         print('pmod_results', *['{:.4f}'.format(i) for i in pmod_results],
               sep='\t')
         print('umod_results', *['{:.4f}'.format(i) for i in umod_results],
               sep='\t')
 
         print('mod')
+        """
         mod_metrics, mod_pred = print_model_performances(
             mod, test_fd, res_constraint=res_constraints[constraint])
+        """
         print('Accuracies')
         print(mod_metrics.accuracy(), mod_metrics.accuracy(privileged=True),
               mod_metrics.accuracy(privileged=False))
+        """

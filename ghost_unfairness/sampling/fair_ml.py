@@ -58,10 +58,10 @@ from aif360.algorithms.postprocessing.eq_odds_postprocessing\
 #from aif360.algorithms.postprocessing.reject_option_classification\
 #        import RejectOptionClassification
 from aif360.algorithms.postprocessing import RejectOptionClassification
-from common_utils import compute_metrics
+from .common_utils import compute_metrics
 
 #from myutils import balance
-from synthetic_generator import synthetic
+from .synthetic_generator import synthetic
 
 # construct argument parser
 import argparse

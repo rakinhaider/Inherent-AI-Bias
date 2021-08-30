@@ -5,7 +5,7 @@ from ghost_unfairness.sampling.synthetic_generator import(
 from aif360.datasets import(
     CompasDataset, GermanDataset, BankDataset, AdultDataset
 )
-from aif360.metrics import BinaryLabelDatasetMetric as BM
+from aif360.metrics import (BinaryLabelDatasetMetric as BM, ClassificationMetric)
 import numpy as np
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
@@ -18,6 +18,7 @@ from ghost_unfairness.utils import get_groupwise_performance
 from ghost_unfairness.fair_dataset import FairDataset
 import argparse
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 
 def get_group_dicts(dataset):
@@ -56,7 +57,7 @@ def get_pos_neg_by_group(dataset, group):
 def get_samples_by_group(dataset, n_samples, group, label):
     indices = get_indices(dataset, group, label)
     indices = np.random.choice(indices, n_samples, replace=False)
-    print(indices[:10])
+    # print(indices[:10], len(indices), group, label)
     return indices
 
 
@@ -95,15 +96,19 @@ def get_real_fd(dataset, alpha=0.5, beta=1):
     fair_real_dataset = dataset.subset(indices)
     u_group, p_group = get_group_dicts(dataset)
     dataset_metric = BM(fair_real_dataset, u_group, p_group)
-    assert dataset_metric.base_rate(privileged=True) == alpha
-    assert dataset_metric.base_rate(privileged=False) == alpha
-    assert dataset_metric.base_rate(privileged=None) == alpha
+    # print('this', dataset_metric.base_rate(privileged=True))
+    # print('this', dataset_metric.base_rate(privileged=False))
+    # print('this', dataset_metric.base_rate(privileged=None))
+    # get_base_rates(fair_real_dataset)
+    assert abs(dataset_metric.base_rate(privileged=True) - alpha) < 1e-3
+    assert abs(dataset_metric.base_rate(privileged=False) - alpha) < 1e-3
+    assert abs(dataset_metric.base_rate(privileged=None) - alpha) < 1e-3
     fd = FairDataset(2, 1, 1)
     fd.update_from_dataset(fair_real_dataset)
     return fd
 
 
-def get_balanced_dataset(dataset, sample_mode=2):
+def get_balanced_dataset(dataset, sample_mode):
     f_label = dataset.favorable_label
     uf_label = dataset.unfavorable_label
     p_group, u_group = get_group_dicts(dataset)
@@ -112,13 +117,14 @@ def get_balanced_dataset(dataset, sample_mode=2):
 
     base_rate_p = dataset_metric.base_rate(privileged=True)
     base_rate_u = dataset_metric.base_rate(privileged=False)
+    # print(base_rate_p, base_rate_u)
 
-    dataset_balanced = synthetic(dataset, u_group,
-                                 base_rate_p, base_rate_u,
-                                 f_label, uf_label,
-                                 None, sample_mode, 1.00)
+    dataset = synthetic(dataset, u_group,
+                        base_rate_p, base_rate_u,
+                        f_label, uf_label,
+                        None, sample_mode, 1.00)
 
-    return dataset_balanced
+    return dataset
 
 
 def fix_balanced_dataset(dataset):
@@ -133,6 +139,27 @@ def fix_balanced_dataset(dataset):
     assert li == lf and lf == ls
 
 
+def get_sample_modes(dataset):
+    # Assumed only one favorable class.
+    favorable_class = dataset.favorable_label
+    unfavorable_class = 1 - favorable_class
+    df, _ = dataset.convert_to_dataframe()
+    grouped = df.groupby(dataset.protected_attribute_names)
+    percents = pd.DataFrame()
+    for r, grp in grouped:
+        percents[r] = grp[dataset.label_names[0]].value_counts()/len(grp)
+
+    # print(percents)
+    if percents[1][1] > percents[0][1]:
+        # If privileged has higher base_rate
+        #   Inflate favored in unprivileged
+        #   Inflate unfavored in privileged.
+        sample_mode = 2
+    else:
+        sample_mode = 1
+    return sample_mode
+
+
 def get_dataset(dataset_name):
     if dataset_name == 'compas':
         dataset = CompasDataset(
@@ -140,9 +167,16 @@ def get_dataset(dataset_name):
             # attribute for "sex" which we do not
             # consider in this evaluation
             privileged_classes=[['Caucasian']],  # race Caucasian is considered privileged
-            features_to_drop=['personal_status', 'sex']  # ignore sex-related attributes
+            # Just to test (2 features, sensitive attribute and target).
+            # features_to_keep=['priors_count', 'juv_fel_count',
+            #                  'race', 'two_year_recid'],
+            features_to_drop=['personal_status', 'sex', 'c_charge_desc', 'age'],  # ignore sex-related attributes
+            # Simple testing
+            # features_to_drop=['personal_status', 'sex', 'c_charge_desc', 'age',
+            #                  'age_cat', 'c_charge_degree'],
+            favorable_classes=[1]
         )
-
+        dataset.labels = 1 - dataset.labels
         # dataset.metadata['protected_attribute_maps'] = \
         #     [{1.0: 'Caucasian', 0.0: 'Not Caucasian'}]
     elif dataset_name == 'german':
@@ -172,6 +206,88 @@ def get_dataset(dataset_name):
     return dataset
 
 
+def print_model_performances(model, test_fd):
+    ### MUST REMOVE TO OTHER MODULE ####
+    test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=False)
+    data = test_fd.copy()
+    data_pred = test_fd.copy()
+    data_pred.labels = mod_pred = model.predict(test_fd_x)
+    proba = model.predict_proba(test_fd_x)
+    # print(model.sigma_)
+    # print(model.theta_)
+    # print(proba)
+    metrics = ClassificationMetric(data,
+                                   data_pred,
+                                   privileged_groups=test_fd.privileged_groups,
+                                   unprivileged_groups=test_fd.unprivileged_groups)
+
+    # print(data.labels.shape)
+    # print(data.labels)
+    # print(data.labels[0:5, 0])
+    # print(data_pred.labels[0:5])
+    merged = np.vstack([data.labels[:, 0], data_pred.labels]).transpose()
+    # print(merged.shape)
+    # print(merged[0:5, :])
+    print(np.unique(merged, axis=0, return_counts=True))
+
+    print(metrics.binary_confusion_matrix())
+    print('SR\t', metrics.selection_rate())
+
+    print('PCNFM\t', metrics.binary_confusion_matrix(privileged=True))
+    print('PSR\t', metrics.selection_rate(privileged=True))
+    print('PTPR\t', metrics.true_positive_rate(privileged=True))
+    print('PFPR\t', metrics.false_positive_rate(privileged=True))
+    # print('PFDR\t', metrics.false_discovery_rate(privileged=True))
+    print('UCNFM\t', metrics.binary_confusion_matrix(privileged=False))
+    print('USR\t', metrics.selection_rate(privileged=False))
+    print('UTPR\t', metrics.true_positive_rate(privileged=False))
+    print('UFPR\t', metrics.false_positive_rate(privileged=False))
+    # print('UFDR\t', metrics.false_discovery_rate(privileged=False))
+    return metrics, mod_pred
+
+
+def get_base_rates(dataset):
+    df, _ = dataset.convert_to_dataframe()
+    grouped = df.groupby(dataset_balanced.protected_attribute_names)
+    for r, grp in grouped:
+        print(grp[dataset_balanced.label_names].value_counts()/len(grp))
+        print(len(grp))
+
+
+def describe(dataset):
+    df, _ = dataset.convert_to_dataframe()
+    summary = df.describe()
+    if debug:
+        columns = ['juv_fel_count', 'priors_count']
+        print(summary.loc[['mean', 'std']][columns])
+    else:
+        columns = dataset.feature_names
+    grouped = df.groupby(['race'])
+    for r, grp in grouped:
+        stats = {}
+        pos = grp[dataset.label_names[0]] == dataset.favorable_label
+        pos_summary = grp[pos].describe()
+        neg = grp[dataset.label_names[0]] == dataset.unfavorable_label
+        neg_summary = grp[neg].describe()
+
+        for i, c in enumerate(columns):
+            key = 'mu_{}_{}_plus'.format(i + 1, 'p' if r else 'u')
+            stats[key] = pos_summary.loc['mean'][c]
+            key = 'sigma_{}_{}_plus'.format(i + 1, 'p' if r else 'u')
+            stats[key] = pos_summary.loc['std'][c]
+            key = 'mu_{}_{}_minus'.format(i + 1, 'p' if r else 'u')
+            stats[key] = neg_summary.loc['mean'][c]
+            key = 'sigma_{}_{}_minus'.format(i + 1, 'p' if r else 'u')
+            stats[key] = neg_summary.loc['std'][c]
+
+        mu_stats = [c for c in stats.keys() if c.startswith('mu')]
+        sig_stats = [c for c in stats.keys() if c.startswith('sigma')]
+        print(*mu_stats, sep='\t')
+        print(*['{:10.4f}'.format(stats[c]) for c in mu_stats], sep='\t')
+        print(*sig_stats, sep='\t')
+        print(*['{:10.4f}'.format(stats[c]) for c in sig_stats], sep='\t')
+
+
 if __name__ == "__main__":
     np.random.seed(23)
 
@@ -190,11 +306,11 @@ if __name__ == "__main__":
                       )
     args = args.parse_args()
 
+    debug = True
+
     dataset_orig = get_dataset(args.data)
 
-    sample_mode = 2
-    if args.data == 'bank':
-        sample_mode = 2
+    sample_mode = get_sample_modes(dataset_orig)
 
     if args.model_type == 'nb':
         model_type = GaussianNB
@@ -202,39 +318,68 @@ if __name__ == "__main__":
         model_type = SVC
     elif args.model_type == 'lr':
         model_type = LogisticRegression
+    else:
+        raise NotImplementedError('Classifier not supported.')
 
     dataset_balanced = get_balanced_dataset(dataset_orig,
-                                            sample_mode=sample_mode)
+                                            sample_mode=2)
     fix_balanced_dataset(dataset_balanced)
-    fd_train = get_real_fd(dataset_balanced)
+    # get_base_rates(dataset_balanced)
+    # print(dataset_balanced.feature_names)
     columns = ['mean_difference', 'disparate_impact',
                'Opt_Acc', 'Priv_Acc', 'Unpriv_Acc',
                'Priv_True_pos', 'Priv_False_pos',
                'Unpriv_True_pos', 'Unpriv_False_pos',
                ]
     results = pd.DataFrame(columns=columns)
-    for i in range(0, int(args.k_fold)):
-        np.random.seed(i)
-        fd_test = get_real_fd(dataset_balanced)
-        pmod, p_result = get_groupwise_performance(fd_train, fd_test, model_type,
-                                                   privileged=True, pos_rate=True)
-        print(*p_result, sep='\t')
-        results = results.append(dict(zip(columns, p_result)), ignore_index=True)
-        umod, u_result = get_groupwise_performance(fd_train, fd_test, model_type,
-                                                   privileged=False, pos_rate=True)
-        print(*u_result, sep='\t')
-        results = results.append(dict(zip(columns, u_result)), ignore_index=True)
 
-        mod, m_result = get_groupwise_performance(fd_train, fd_test, model_type,
-                                                  privileged=None, pos_rate=True)
-        print(*m_result, sep='\t')
-        results = results.append(dict(zip(columns, m_result)), ignore_index=True)
+    args.k_fold = 5
+    for alpha in [0.1, 0.25, 0.5, 0.75, 0.9]:
+        print(alpha)
+        fd = get_real_fd(dataset_balanced, alpha=alpha)
+        fold_metrics = []
+        for i in range(0, int(args.k_fold)):
+            fd_train, fd_test = fd.split([0.8], shuffle=True)
+            pmod, p_result = get_groupwise_performance(
+                fd_train, fd_test, model_type, privileged=True, pos_rate=True)
+            results = results.append(dict(zip(columns, p_result)),
+                                     ignore_index=True)
+            umod, u_result = get_groupwise_performance(
+                fd_train, fd_test, model_type, privileged=False, pos_rate=True)
+            results = results.append(dict(zip(columns, u_result)),
+                                     ignore_index=True)
 
-        if abs(1 - m_result[1]) > abs(1 - u_result[1]) or \
-                abs(1 - m_result[1]) > abs(1 - p_result[1]):
-            print()
-        else:
-            print("------------VIOLATION-----------------")
+            mod, m_result = get_groupwise_performance(
+                fd_train, fd_test, model_type, privileged=None, pos_rate=True)
+            # print(m_result[-4:], sep='\t')
+            # print(mod.class_prior_)
+            # print(mod.classes_)
+            metrics, mod_pred = print_model_performances(mod, fd_test)
+            results = results.append(dict(zip(columns, m_result)),
+                                     ignore_index=True)
+            fold_metrics.append(metrics)
+            """    
+            if abs(1 - m_result[1]) > abs(1 - u_result[1]) or \
+                    abs(1 - m_result[1]) > abs(1 - p_result[1]):
+                print()
+            else:
+                print("------------VIOLATION-----------------")
+            """
+        sel_rates = [fr.selection_rate(privileged=None) for fr in fold_metrics]
+        p_sel_rates = [fr.selection_rate(privileged=True) for fr in fold_metrics]
+        u_sel_rates = [fr.selection_rate(privileged=False) for fr in fold_metrics]
+        print(sel_rates)
+        print(np.mean(sel_rates))
+        print(np.std(sel_rates))
+
+        print(p_sel_rates)
+        print(np.mean(p_sel_rates))
+        print(np.std(p_sel_rates))
+
+        print(u_sel_rates)
+        print(np.mean(u_sel_rates))
+        print(np.std(u_sel_rates))
+        break
 
     title = '_'.join([args.data, args.model_type])
     results.to_csv('outputs/' + title + '.tsv', sep='\t')
