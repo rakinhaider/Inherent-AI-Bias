@@ -7,7 +7,8 @@ from sklearn.naive_bayes import GaussianNB
 from ghost_unfairness.utils import *
 
 
-def print_model_performances(model, test_fd, res_constraint=None):
+def print_model_performances(model, test_fd, res_constraint=None,
+                             print_acc=False):
     test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=False)
     data = test_fd.copy()
     data_pred = test_fd.copy()
@@ -32,10 +33,14 @@ def print_model_performances(model, test_fd, res_constraint=None):
     print('SR\t', metrics.selection_rate())
 
     # print('PCNFM\t', metrics.binary_confusion_matrix(privileged=True))
+    if print_acc:
+        print('PACC\t', metrics.accuracy(privileged=True))
     print('PSR\t', metrics.selection_rate(privileged=True))
     print('PFPR\t', metrics.false_positive_rate(privileged=True))
     print('PFDR\t', metrics.false_discovery_rate(privileged=True))
     # print('UCNFM\t', metrics.binary_confusion_matrix(privileged=False))
+    if print_acc:
+        print('UACC\t', metrics.accuracy(privileged=False))
     print('USR\t', metrics.selection_rate(privileged=False))
     print('UFPR\t', metrics.false_positive_rate(privileged=False))
     print('UFDR\t', metrics.false_discovery_rate(privileged=False))
@@ -92,29 +97,24 @@ if __name__ == "__main__":
 
         print(test_fd.privileged_groups)
 
-        if False:
-            print('Theta')
-            print(pmod.theta_)
-            print(umod.theta_)
-            print(mod.theta_)
-
-            print('Sigma')
-            print(pmod.sigma_)
-            print(umod.sigma_)
-            print(mod.sigma_)
-
-            print(mod.class_prior_)
-
         """
         print('pmod_results', *['{:.4f}'.format(i) for i in pmod_results],
               sep='\t')
         print('umod_results', *['{:.4f}'.format(i) for i in umod_results],
               sep='\t')
-
-        print('mod')
         """
-        mod_metrics, mod_pred = print_model_performances(
-            mod, test_fd, res_constraint=res_constraints[constraint])
+        print('pmod')
+        pmod_metrics, pmod_pred = print_model_performances(pmod, test_fd,
+            res_constraint=res_constraints[constraint], print_acc=True
+        )
+        print('umod')
+        umod_metrics, umod_pred = print_model_performances(umod, test_fd,
+            res_constraint=res_constraints[constraint], print_acc=True
+        )
+        print('mod')
+        mod_metrics, mod_pred = print_model_performances(mod, test_fd,
+            res_constraint=res_constraints[constraint], print_acc=True
+        )
         """
         print('Accuracies')
         print(mod_metrics.accuracy(), mod_metrics.accuracy(privileged=True),

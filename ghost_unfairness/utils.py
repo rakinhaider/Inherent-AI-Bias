@@ -138,9 +138,9 @@ def get_datasets(n_samples, n_features, n_redlin, kwargs,
 def train_model(model_type, data, params):
     x, y = data.get_xy(keep_protected=False)
 
-    model = model_type()
+    model = model_type(**params)
     # params[variant] = val
-    model.set_params(**params)
+    # model.set_params(**params)
 
     model = model.fit(x, y)
 
@@ -150,7 +150,9 @@ def train_model(model_type, data, params):
 def get_groupwise_performance(train_fd, test_fd, model_type,
                               privileged=None,
                               params=None,
-                              pos_rate=False):
+                              pos_rate=False,
+                              privileged_group=None,
+                              unprivileged_group=None):
     if privileged:
         train_fd = train_fd.get_privileged_group()
         

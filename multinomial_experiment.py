@@ -9,6 +9,7 @@ from aif360.datasets import(
 from aif360.metrics import (BinaryLabelDatasetMetric as BM, ClassificationMetric)
 import numpy as np
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
+from sklearn.preprocessing import OrdinalEncoder
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from aif360.metrics.utils import(
@@ -18,9 +19,7 @@ from aif360.metrics.utils import(
 from ghost_unfairness.fair_dataset import FairDataset
 import argparse
 import pandas as pd
-from sklearn.metrics import make_scorer
-from sklearn.model_selection import cross_validate
-from scipy.stats import norm
+from ghost_unfairness.geomnb import GeomNB
 
 def get_group_dicts(dataset):
     if len(dataset.protected_attribute_names):
@@ -176,6 +175,7 @@ def get_dataset(dataset_name):
                               'age_cat', 'c_charge_degree'],
             favorable_classes=[1]
         )
+        print(dataset.feature_names)
         dataset.labels = 1 - dataset.labels
         # dataset.metadata['protected_attribute_maps'] = \
         #     [{1.0: 'Caucasian', 0.0: 'Not Caucasian'}]
@@ -252,7 +252,6 @@ def get_base_rates(dataset):
     grouped = df.groupby(dataset.protected_attribute_names)
     for r, grp in grouped:
         print(r, grp[dataset.label_names].value_counts()/len(grp))
-        print(grp[dataset.label_names].value_counts())
         print(len(grp))
 
 
@@ -302,6 +301,18 @@ def scoring_func(y, y_pred, privileged, data):
     return metric.selection_rate(privileged)
 
 
+def get_min_categories(data):
+    x, y = data.get_xy(keep_protected=False)
+    min_categories = []
+    for c in x.columns:
+        counts = x[c].value_counts()
+        # print(counts.sort_index())
+        # print(len(counts))
+        min_categories.append(len(counts))
+
+    return min_categories
+
+
 if __name__ == "__main__":
     np.random.seed(23)
 
@@ -324,10 +335,12 @@ if __name__ == "__main__":
 
     dataset_orig = get_dataset(args.data)
 
-    sample_mode = 2
+    sample_mode = get_sample_modes(dataset_orig)
 
     if args.model_type == 'nb':
-        model_type = GaussianNB
+        # model_type = GaussianNB
+        # model_type = CategoricalNB
+        model_type = GeomNB
     elif args.model_type == 'svm':
         model_type = SVC
     elif args.model_type == 'lr':
@@ -336,25 +349,6 @@ if __name__ == "__main__":
         raise NotImplementedError('Classifier not supported.')
 
     # get_base_rates(dataset_orig)
-    p_group = [{'race': 1}]
-    u_group = [{'race': 0}]
-    # NB Performance on dataset_orig
-    train_orig, test_orig = dataset_orig.split([0.7], shuffle=True)
-    train_orig_x, train_orig_y = train_orig.features, train_orig.labels
-    train_orig_x = train_orig_x[:, 1:]
-    test_orig_x, test_orig_y = test_orig.features, test_orig.labels
-    test_orig_x = test_orig_x[:, 1:]
-
-    mod = GaussianNB()
-    mod.fit(train_orig_x, train_orig_y)
-    test_orig_pred = test_orig.copy()
-    test_orig_pred.labels = mod.predict(test_orig_x)
-    metric = ClassificationMetric(test_orig, test_orig_pred,
-                                  privileged_groups=p_group,
-                                  unprivileged_groups=u_group)
-
-    # get_base_rates(dataset_balanced)
-
     dataset_balanced = get_balanced_dataset(dataset_orig, sample_mode=2)
     fix_balanced_dataset(dataset_balanced)
     # get_base_rates(dataset_balanced)
@@ -366,101 +360,41 @@ if __name__ == "__main__":
     results = pd.DataFrame(columns=columns)
 
     args.k_fold = 1
-    for alpha in [0.25, 0.5, 0.75, 0.9]:
+    for alpha in [0.1, 0.25, 0.5, 0.75, 0.9]:
         # print(alpha)
         fd = get_real_fd(dataset_balanced, alpha=alpha)
-        fold_metrics = []
-        for i in range(0, int(args.k_fold)):
-            fd_train, fd_test = fd.split([0.7], shuffle=True)
+        fd_train, fd_test = fd.split([0.8], shuffle=True)
 
-            # mod, m_result = get_groupwise_performance(
-            #     fd_train, fd_test, model_type, privileged=None, pos_rate=True)
+        print(get_min_categories(fd))
+        print(get_min_categories(fd_train))
+        print(get_min_categories(fd_test))
+        x, _ = fd.get_xy(keep_protected=False)
+        enc = OrdinalEncoder()
+        enc.fit(x)
 
-            ################ Get min_categories #######################
-            def get_min_categories(data):
-                x, y = data.get_xy(keep_protected=False)
-                min_categories = []
-                for c in x.columns:
-                    counts = x[c].value_counts()
-                    # print(counts.sort_index())
-                    # print(len(counts))
-                    min_categories.append(len(counts))
+        x, y = fd_train.get_xy(keep_protected=False)
+        x[:] = enc.transform(x)
+        probs = []
+        for label in [0, 1]:
+            probs.append([])
+            sel = x[y == label]
+            for c in sel.columns:
+                prob = sel[c].value_counts().sort_index() / len(sel)
+                probs[label].append(prob.values)
 
-                return min_categories
-            min_categories = get_min_categories(fd)
-            get_min_categories(fd_train)
-            get_min_categories(fd_test)
-            ################ Get min_categories #######################
-            x, y = fd_train.get_xy(keep_protected=False)
-            mod = model_type(min_categories=min_categories)
-            mod.fit(x, y)
+        print(probs)
+        for label in [0, 1]:
+            for p in probs[label]:
+                print(np.log(p))
 
-            ################### Investigate ###########################
-            df, _ = fd_train.convert_to_dataframe()
-            # print(df['race'])
-            print(len(df['priors_count'].value_counts().sort_index()))
-            x, y = fd_train.get_xy(keep_protected=False)
-            get_base_rates(fd_train)
-            pos = x[y == 1]
-            neg = x[y == 0]
-            print(len(neg)/len(x), len(pos)/len(x))
-            # print(x[y == 0].describe().loc['mean'].values)
-            # print(x[y == 1].describe().loc['mean'].values)
-            # print(mod.theta_)
-            # print(np.var(x[y == 0]).values)
-            # print(np.var(x[y == 1]).values)
-            # print(mod.sigma_)
-            row = x.iloc[0]
-            # likelihoods = [[0], [0]]
-            # likelihoods[0][0] = mod.class_prior_[0]
-            # likelihoods[1][0] = mod.class_prior_[1]
-            # print(likelihoods[0], likelihoods[1])
-            # for i, c in enumerate(x.columns):
-            #     likelihoods[0].append(norm.pdf(row[c], loc=mod.theta_[0][i],
-            #                                   scale=np.sqrt(mod.sigma_[0][i])))
-            #     likelihoods[1].append(norm.pdf(row[c], loc=mod.theta_[1][i],
-            #                                   scale=np.sqrt(mod.sigma_[1][i])))
-            # print(likelihoods[0])
-            # print(likelihoods[1])
-            # print(likelihoods[0]/sum(likelihoods), likelihoods[1]/sum(likelihoods))
-            print(row.values)
-            print(mod.__dir__())
-            print(mod.class_count_)
-            print(mod.classes_)
-            print(mod.category_count_)
-            print(mod.n_categories_)
-            print(mod.feature_log_prob_)
-            print(mod.predict_proba([row]))
-            print(mod.predict([row]))
+        mod = CategoricalNB(min_categories=[len(c) for c in enc.categories_])
+        mod.fit(x, y)
+        print(mod.feature_log_prob_)
 
-            pred = mod.predict(x)
-            print(np.unique(pred, return_counts=True))
-            ################### Investigate ###########################
-
-            metrics, mod_pred = print_model_performances(mod, fd_test, False)
-            fold_metrics.append(metrics)
-            """    
-            if abs(1 - m_result[1]) > abs(1 - u_result[1]) or \
-                    abs(1 - m_result[1]) > abs(1 - p_result[1]):
-                print()
-            else:
-                print("------------VIOLATION-----------------")
-            """
-        sel_rates = [fr.selection_rate(privileged=None) for fr in fold_metrics]
-        p_sel_rates = [fr.selection_rate(privileged=True) for fr in fold_metrics]
-        u_sel_rates = [fr.selection_rate(privileged=False) for fr in fold_metrics]
-        print(sel_rates)
-        print(np.mean(sel_rates))
-        print(np.std(sel_rates))
-
-        print(p_sel_rates)
-        print(np.mean(p_sel_rates))
-        print(np.std(p_sel_rates))
-
-        print(u_sel_rates)
-        print(np.mean(u_sel_rates))
-        print(np.std(u_sel_rates))
-        break
-
-    title = '_'.join([args.data, args.model_type])
-    results.to_csv('outputs/' + title + '.tsv', sep='\t')
+        test_x, test_y = fd_test.get_xy(keep_protected=False)
+        test_x[:] = enc.transform(test_x)
+        classes, counts = np.unique(mod.predict(test_x),
+                                          return_counts=True)
+        print(counts)
+        print(counts / len(test_x))
+        # break
