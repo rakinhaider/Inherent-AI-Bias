@@ -3,30 +3,22 @@ import pandas as pd
 from aif360.algorithms.preprocessing.optim_preproc_helpers.\
     data_preproc_functions import load_preproc_data_compas
 
-from mixed_model_experiment import get_base_rates
 
-
-def compas_stats(df):
-    label = 'two_year_recid'
-    # Preprocess and drops samples not used in propublica analysis.
-    # aif360 always applies this default processing.
-    df = default_preprocessing(df)
-    print(df['race'].value_counts())
-    grouped = df.groupby(by=['race'])
+def get_base_rates(dataset):
+    df, _ = dataset.convert_to_dataframe()
+    print('Base rate in entire dataset.')
+    print(df['two_year_recid'].value_counts()/len(df))
+    grouped = df.groupby(dataset.protected_attribute_names)
     for r, grp in grouped:
-        print()
-        print('Number of Person in favored(0) and unfavored(1) class in', r)
-        print(grp[label].value_counts())
-        print('Percentage of samples in favored(0) and unfavored(1) class.')
-        print(grp[label].value_counts()/len(grp))
-    return df
+        print('Race: ', r)
+        print('Favored and unfavored counts :\n', grp[dataset.label_names].value_counts())
+        print('Percentage of favored and unfavored :\n', grp[dataset.label_names].value_counts()/len(grp))
+        print('Total :', len(grp))
 
 
 if __name__ == "__main__":
     # Load the raw file.
     df = pd.read_csv('C:/Python38_64/Lib/site-packages/aif360/data/raw/compas/compas-scores-two-years.csv')
-
-    # compas_stats(df)
 
     dataset = load_preproc_data_compas(protected_attributes=['race'])
     get_base_rates(dataset)

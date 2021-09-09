@@ -370,82 +370,19 @@ if __name__ == "__main__":
         # print(alpha)
         fd = get_real_fd(dataset_balanced, alpha=alpha)
         fold_metrics = []
-        for i in range(0, int(args.k_fold)):
+        for i in [23, 29, 37, 41, 47]:
             fd_train, fd_test = fd.split([0.7], shuffle=True)
 
             # mod, m_result = get_groupwise_performance(
             #     fd_train, fd_test, model_type, privileged=None, pos_rate=True)
 
-            ################ Get min_categories #######################
-            def get_min_categories(data):
-                x, y = data.get_xy(keep_protected=False)
-                min_categories = []
-                for c in x.columns:
-                    counts = x[c].value_counts()
-                    # print(counts.sort_index())
-                    # print(len(counts))
-                    min_categories.append(len(counts))
-
-                return min_categories
-            min_categories = get_min_categories(fd)
-            get_min_categories(fd_train)
-            get_min_categories(fd_test)
-            ################ Get min_categories #######################
             x, y = fd_train.get_xy(keep_protected=False)
-            mod = model_type(min_categories=min_categories)
+            mod = model_type()
             mod.fit(x, y)
 
-            ################### Investigate ###########################
-            df, _ = fd_train.convert_to_dataframe()
-            # print(df['race'])
-            print(len(df['priors_count'].value_counts().sort_index()))
-            x, y = fd_train.get_xy(keep_protected=False)
-            get_base_rates(fd_train)
-            pos = x[y == 1]
-            neg = x[y == 0]
-            print(len(neg)/len(x), len(pos)/len(x))
-            # print(x[y == 0].describe().loc['mean'].values)
-            # print(x[y == 1].describe().loc['mean'].values)
-            # print(mod.theta_)
-            # print(np.var(x[y == 0]).values)
-            # print(np.var(x[y == 1]).values)
-            # print(mod.sigma_)
-            row = x.iloc[0]
-            # likelihoods = [[0], [0]]
-            # likelihoods[0][0] = mod.class_prior_[0]
-            # likelihoods[1][0] = mod.class_prior_[1]
-            # print(likelihoods[0], likelihoods[1])
-            # for i, c in enumerate(x.columns):
-            #     likelihoods[0].append(norm.pdf(row[c], loc=mod.theta_[0][i],
-            #                                   scale=np.sqrt(mod.sigma_[0][i])))
-            #     likelihoods[1].append(norm.pdf(row[c], loc=mod.theta_[1][i],
-            #                                   scale=np.sqrt(mod.sigma_[1][i])))
-            # print(likelihoods[0])
-            # print(likelihoods[1])
-            # print(likelihoods[0]/sum(likelihoods), likelihoods[1]/sum(likelihoods))
-            print(row.values)
-            print(mod.__dir__())
-            print(mod.class_count_)
-            print(mod.classes_)
-            print(mod.category_count_)
-            print(mod.n_categories_)
-            print(mod.feature_log_prob_)
-            print(mod.predict_proba([row]))
-            print(mod.predict([row]))
-
-            pred = mod.predict(x)
-            print(np.unique(pred, return_counts=True))
-            ################### Investigate ###########################
-
-            metrics, mod_pred = print_model_performances(mod, fd_test, False)
+            metrics, mod_pred = print_model_performances(mod, fd_test, True)
             fold_metrics.append(metrics)
-            """    
-            if abs(1 - m_result[1]) > abs(1 - u_result[1]) or \
-                    abs(1 - m_result[1]) > abs(1 - p_result[1]):
-                print()
-            else:
-                print("------------VIOLATION-----------------")
-            """
+
         sel_rates = [fr.selection_rate(privileged=None) for fr in fold_metrics]
         p_sel_rates = [fr.selection_rate(privileged=True) for fr in fold_metrics]
         u_sel_rates = [fr.selection_rate(privileged=False) for fr in fold_metrics]
@@ -460,7 +397,7 @@ if __name__ == "__main__":
         print(u_sel_rates)
         print(np.mean(u_sel_rates))
         print(np.std(u_sel_rates))
-        break
+        # break
 
     title = '_'.join([args.data, args.model_type])
     results.to_csv('outputs/' + title + '.tsv', sep='\t')

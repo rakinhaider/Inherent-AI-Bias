@@ -18,6 +18,7 @@ from aif360.metrics.utils import(
 from ghost_unfairness.fair_dataset import FairDataset
 import argparse
 import pandas as pd
+from sklearn.naive_bayes import GaussianNB
 from ghost_unfairness.mixed_model_nb import MixedModelNB
 from ghost_unfairness.utils import get_groupwise_performance
 
@@ -131,11 +132,11 @@ def fix_balanced_dataset(dataset):
     n = len(dataset.features)
     # Fixing balanced dataset attributes
     dataset.instance_names = [str(i) for i in range(n)]
-    dataset.scores = np.ones_like(dataset_balanced.labels)
-    dataset.scores -= dataset_balanced.labels
-    li = len(dataset_balanced.instance_names)
-    lf = len(dataset_balanced.features)
-    ls = len(dataset_balanced.scores)
+    dataset.scores = np.ones_like(dataset.labels)
+    dataset.scores -= dataset.labels
+    li = len(dataset.instance_names)
+    lf = len(dataset.features)
+    ls = len(dataset.scores)
     assert li == lf and lf == ls
 
 
@@ -160,6 +161,20 @@ def get_sample_modes(dataset):
     return sample_mode
 
 
+def compas_preprocessing(df):
+    label = 'two_year_recid'
+    # Preprocess and drops samples not used in propublica analysis.
+    # aif360 always applies this default processing.
+    df = default_preprocessing(df)
+    grouped = df.groupby(by=['race'])
+    keep_races = ['African-American', 'Caucasian']
+    for r, grp in grouped:
+        if r not in keep_races:
+            indices = df[df['race'] == r].index
+            df = df.drop(index=indices)
+    return df
+
+
 def get_dataset(dataset_name):
     if dataset_name == 'compas':
         dataset = CompasDataset(
@@ -170,11 +185,12 @@ def get_dataset(dataset_name):
             # Just to test (2 features, sensitive attribute and target).
             # features_to_keep=['priors_count', 'juv_fel_count',
             #                  'race', 'two_year_recid'],
-            features_to_drop=['personal_status', 'sex', 'age'],  # ignore sex-related attributes
+            features_to_drop=['personal_status', 'sex'],  # ignore sex-related attributes
             # Simple testing
             # features_to_drop=['personal_status', 'sex', 'c_charge_desc', 'age',
             #                  'age_cat', 'c_charge_degree'],
             favorable_classes=[1],
+            custom_preprocessing=compas_preprocessing
         )
 
         dataset = load_preproc_data_compas(protected_attributes=['race'])
@@ -214,22 +230,11 @@ def print_model_performances(model, test_fd, verbose):
     data = test_fd.copy()
     data_pred = test_fd.copy()
     data_pred.labels = mod_pred = model.predict(test_fd_x)
-    proba = model.predict_proba(test_fd_x)
-    # print(model.sigma_)
-    # print(model.theta_)
-    # print(proba)
     metrics = ClassificationMetric(data,
                                    data_pred,
                                    privileged_groups=test_fd.privileged_groups,
                                    unprivileged_groups=test_fd.unprivileged_groups)
 
-    # print(data.labels.shape)
-    # print(data.labels)
-    # print(data.labels[0:5, 0])
-    # print(data_pred.labels[0:5])
-    merged = np.vstack([data.labels[:, 0], data_pred.labels]).transpose()
-    # print(merged.shape)
-    # print(merged[0:5, :])
     if verbose:
         print(metrics.binary_confusion_matrix())
         print('SR\t', metrics.selection_rate())
@@ -239,13 +244,11 @@ def print_model_performances(model, test_fd, verbose):
         print('PSR\t', metrics.selection_rate(privileged=True))
         print('PTPR\t', metrics.true_positive_rate(privileged=True))
         print('PFPR\t', metrics.false_positive_rate(privileged=True))
-        # print('PFDR\t', metrics.false_discovery_rate(privileged=True))
         print('UCNFM\t', metrics.binary_confusion_matrix(privileged=False))
         print('UACC\t', metrics.accuracy(privileged=False))
         print('USR\t', metrics.selection_rate(privileged=False))
         print('UTPR\t', metrics.true_positive_rate(privileged=False))
         print('UFPR\t', metrics.false_positive_rate(privileged=False))
-        # print('UFDR\t', metrics.false_discovery_rate(privileged=False))
     return metrics, mod_pred
 
 
@@ -258,40 +261,6 @@ def get_base_rates(dataset):
         print(len(grp))
 
 
-def describe(dataset):
-    df, _ = dataset.convert_to_dataframe()
-    summary = df.describe()
-    if debug:
-        columns = ['juv_fel_count', 'priors_count']
-        print(summary.loc[['mean', 'std']][columns])
-    else:
-        columns = dataset.feature_names
-    grouped = df.groupby(['race'])
-    for r, grp in grouped:
-        stats = {}
-        pos = grp[dataset.label_names[0]] == dataset.favorable_label
-        pos_summary = grp[pos].describe()
-        neg = grp[dataset.label_names[0]] == dataset.unfavorable_label
-        neg_summary = grp[neg].describe()
-
-        for i, c in enumerate(columns):
-            key = 'mu_{}_{}_plus'.format(i + 1, 'p' if r else 'u')
-            stats[key] = pos_summary.loc['mean'][c]
-            key = 'sigma_{}_{}_plus'.format(i + 1, 'p' if r else 'u')
-            stats[key] = pos_summary.loc['std'][c]
-            key = 'mu_{}_{}_minus'.format(i + 1, 'p' if r else 'u')
-            stats[key] = neg_summary.loc['mean'][c]
-            key = 'sigma_{}_{}_minus'.format(i + 1, 'p' if r else 'u')
-            stats[key] = neg_summary.loc['std'][c]
-
-        mu_stats = [c for c in stats.keys() if c.startswith('mu')]
-        sig_stats = [c for c in stats.keys() if c.startswith('sigma')]
-        print(*mu_stats, sep='\t')
-        print(*['{:10.4f}'.format(stats[c]) for c in mu_stats], sep='\t')
-        print(*sig_stats, sep='\t')
-        print(*['{:10.4f}'.format(stats[c]) for c in sig_stats], sep='\t')
-
-
 def scoring_func(y, y_pred, privileged, data):
     data = data.subset(range(len(y_pred)))
     pred = data.copy(deepcopy=True)
@@ -302,6 +271,24 @@ def scoring_func(y, y_pred, privileged, data):
                                   privileged_groups=data.privileged_groups,
                                   unprivileged_groups=data.unprivileged_groups)
     return metric.selection_rate(privileged)
+
+
+def random_flips(dataset, privileged=False, n=10):
+    group = 1 if privileged else 0
+    df, _ = dataset.convert_to_dataframe()
+    df['labels'] = dataset.labels
+    pos_group = df[(df['race'] == group) & (df['labels'] == 1)]
+    neg_group = df[(df['race'] == group) & (df['labels'] == 0)]
+
+    pos_sample = pos_group.sample(n=n)
+    neg_sample = neg_group.sample(n=n)
+
+    for i in pos_sample.index:
+        df.loc[i]['labels'] = 0
+    for i in neg_sample.index:
+        df.loc[i]['labels'] = 1
+    dataset.labels = df['labels'].values.reshape(-1, 1)
+    return dataset
 
 
 if __name__ == "__main__":
@@ -325,7 +312,7 @@ if __name__ == "__main__":
     debug = True
 
     dataset_orig = get_dataset(args.data)
-
+    # print(dataset_orig.features.shape)
     sample_mode = get_sample_modes(dataset_orig)
 
     if args.model_type == 'nb':
@@ -342,18 +329,18 @@ if __name__ == "__main__":
     p_group = [{'race': 1}]
     u_group = [{'race': 0}]
     # get_base_rates(dataset_orig)
-    train_orig, test_orig = dataset_orig.split([0.7], shuffle=True)
+    train_orig, test_orig = dataset_orig.split([0.8], shuffle=True)
     train_orig_x, _ = train_orig.convert_to_dataframe()
+    columns = list(train_orig_x.columns)
+    columns = columns[0:1] + columns[2:-1]
     train_orig_y = train_orig.labels.ravel()
-    train_orig_x = train_orig_x[train_orig_x.columns[1:-1]]
+    train_orig_x = train_orig_x[columns]
     test_orig_x, _ = test_orig.convert_to_dataframe()
     test_orig_y = test_orig.labels.ravel()
-    test_orig_x = test_orig_x[test_orig_x.columns[1:-1]]
+    test_orig_x = test_orig_x[columns]
 
     c_charge_desc_cols = [c for c in dataset_orig.feature_names
                                     if c.startswith('c_charge_desc')]
-    # print(c_charge_desc_cols)
-    # print(train_orig.feature_names)
     """
     bern_col = ['age_cat=25 - 45', 'age_cat=Greater than 45',
                 'age_cat=Less than 25',
@@ -383,22 +370,23 @@ if __name__ == "__main__":
     test_orig_fd.update_from_dataset(test_orig)
     pmod, p_result = get_groupwise_performance(
         train_orig_fd, test_orig_fd, MixedModelNB,
-        privileged=True, params=params, pos_rate=False
+        privileged=True, params=params, pos_rate=True
     )
 
     umod, u_result = get_groupwise_performance(
         train_orig_fd, test_orig_fd, MixedModelNB,
-        privileged=False, params=params, pos_rate=False
+        privileged=False, params=params, pos_rate=True
     )
     mod, m_result = get_groupwise_performance(
-        train_orig_fd, test_orig_fd, MixedModelNB,
-        privileged=None, params=params, pos_rate=False
+        train_orig_fd, test_orig_fd, GaussianNB,
+        privileged=None, params={}, pos_rate=True
     )
 
-    # print('Orig group-wise')
-    # print(*['{:.4f}'.format(i) for i in p_result], sep='\t')
-    # print(*['{:.4f}'.format(i) for i in u_result], sep='\t')
-    # print_model_performances(mod, test_orig_fd, verbose=True)
+    print('Orig group-wise')
+    print(*['{:.4f}'.format(i) for i in p_result], sep='\t')
+    print(*['{:.4f}'.format(i) for i in u_result], sep='\t')
+    print(*['{:.4f}'.format(i) for i in m_result], sep='\t')
+    print_model_performances(mod, test_orig_fd, verbose=True)
     dataset_balanced = get_balanced_dataset(dataset_orig, sample_mode=2)
     fix_balanced_dataset(dataset_balanced)
     # get_base_rates(dataset_balanced)
@@ -411,13 +399,13 @@ if __name__ == "__main__":
     args.k_fold = 5
 
     for alpha in [0.25, 0.5, 0.75]:
-        print("################# Alpha = {} ################".format(alpha))
-        for i in [23, 29, 31, 41, 47]:
-            print("############## Fold = {} ################".format(i))
+        for i in [23]:
             fd = get_real_fd(dataset_balanced, alpha=alpha)
             fd_train, fd_test = fd.split([0.7], shuffle=True, seed=i)
 
-            get_base_rates(fd_test)
+            # get_base_rates(fd_test)
+
+            # fd_train = random_flips(fd_train, n=150)
 
             train_x, train_y = fd_train.get_xy(keep_protected=False)
 
@@ -434,8 +422,10 @@ if __name__ == "__main__":
                 fd_train, fd_test, MixedModelNB,
                 privileged=None, params=params, pos_rate=False
             )
+            print()
             print(*['{:.4f}'.format(i) for i in p_result], sep='\t')
             print(*['{:.4f}'.format(i) for i in u_result], sep='\t')
             print(*['{:.4f}'.format(i) for i in m_result], sep='\t')
 
             print_model_performances(mod, test_fd=fd_test, verbose=True)
+            break

@@ -239,3 +239,28 @@ def plot_non_linear_boundary(mu1, mu2, sigma1, sigma2, p, d, label=None):
     y += 1/(2*sigma2**2)*(x-mu2)**2
     plt.plot(x, y, label=label)
     plt.legend()
+
+
+def get_c123(sigma_1, sigma_2, delta):
+    sigma_1_theta_sqr = sigma_1 ** 2 + delta ** 2 / 16
+    sigma_2_theta_sqr = sigma_2 ** 2 + delta ** 2 / 16
+
+    denominator = sigma_1_theta_sqr ** 2 * sigma_2 ** 2
+    denominator += sigma_2_theta_sqr ** 2 * sigma_1 ** 2
+    denominator = 2 * np.sqrt(2) * delta * np.sqrt(denominator)
+    c1 = delta ** 2 * sigma_2_theta_sqr / denominator
+    c3 = delta ** 2 * sigma_1_theta_sqr / denominator
+    c2 = 4 * sigma_1_theta_sqr * sigma_2_theta_sqr / denominator
+
+    return c1, c2, c3
+
+
+def get_selection_rate(sigma_1, delta, r, alpha, priv, is_tp):
+    sigma_2 = r * sigma_1
+
+    c_alpha = np.log(alpha / (1 - alpha))
+    c1, c2, c3 = get_c123(sigma_1, sigma_2, delta)
+    c = c1 if priv else c3
+    c = c + c2 * c_alpha if is_tp else c - c2 * c_alpha
+
+    return 0.5 + (1 if is_tp else -1) * 0.5 * erf(c)
