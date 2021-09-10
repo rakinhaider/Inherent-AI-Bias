@@ -4,6 +4,7 @@ import numpy as np
 import scipy.stats as stats
 from scipy.special import erf
 from ghost_unfairness.utils import get_c123
+import argparse
 
 
 def set_rcparams(**kwargs):
@@ -127,12 +128,7 @@ def plot_feat_dist(dist, **kwargs):
     # plt.subplots_adjust(wspace=0.25)
 
 
-def plot_erf():
-    sigma_1 = 2
-    delta = 10
-    r = 2.5
-    alpha = 0.25
-
+def plot_erf(sigma_1, sigma_2, delta, alpha):
     erfs = []
     start = - 250
     end = 250
@@ -144,11 +140,9 @@ def plot_erf():
     plt.plot([i / 100 for i in range(start, end + 1)], erfs, color='black')
 
     calpha = np.log(alpha / (1 - alpha))
-    c1, c2, c3 = get_c123(sigma_1, r * sigma_1, delta)
-    print(calpha, c1, c2, c3)
+    c1, c2, c3 = get_c123(sigma_1, sigma_2, delta)
     points = [c1, c3, c1 + c2 * calpha, c3 + c2 * calpha, c3 - c2 * calpha,
               c1 - c2 * calpha]
-    print(points)
     plt.plot(points, [erf(p) for p in points], 'o', color='black')
 
     texts = [r'$c_1$', r'$c_3$', r'$c_1+c_2*c_\alpha$', r'$c_3+c_2*c_\alpha$',
@@ -198,9 +192,19 @@ def plot_erf():
 
 if __name__ == "__main__":
 
-    textwidth = 505
-    linewidth = 239
-    what = 'erf'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--what', choices=['erf', 'featdist'], default='erf')
+    parser.add_argument('--sigma-1', default=2, type=int)
+    parser.add_argument('--sigma-2', default=5, type=int)
+    parser.add_argument('--mu_p_plus', default=13, type=int)
+    parser.add_argument('--mu_u_plus', default=10, type=int)
+    parser.add_argument('--delta', default=10, type=int)
+    parser.add_argument('--alpha', default=0.25, type=float)
+    parser.add_argument('--width', default=239, type=int)
+    args = parser.parse_args()
+    # textwidth = 505
+    linewidth = args.width
+    what = args.what
     out_dir = 'outputs/figures/'
 
     if what == 'erf':
@@ -208,17 +212,18 @@ if __name__ == "__main__":
                      labelpad=1, markersize=4)
 
         plt.gcf().set_size_inches(set_size(linewidth, 0.95, 0.6))
-        plot_erf()
+        plot_erf(args.sigma_1, args.sigma_2, args.delta, args.alpha)
         fname = 'erf_plot.pdf'
 
     elif what == 'featdist':
-        set_rcparams()
-        mu_p_plus, mu_p_minus, mu_u_plus, mu_u_minus = 13, 3, 10, 0
-        sigma_p, sigma_u = 2, 2
+        set_rcparams(fontsize=7)
+        mu_p_plus, mu_u_plus, = args.mu_p_plus, args.mu_u_plus
+        mu_p_minus, mu_u_minus = mu_p_plus - args.delta, mu_u_plus - args.delta
+        sigma_p, sigma_u = args.sigma_1, args.sigma_2
         dist = {
-            'mu_ps': {'p': 13, 'u': 10},
+            'mu_ps': {'p': mu_p_plus, 'u': mu_u_plus},
             'sigma_ps': {'p': sigma_p, 'u': sigma_u},
-            'mu_ns': {'p': 3, 'u': 0},
+            'mu_ns': {'p': mu_p_minus, 'u': mu_u_minus},
             'sigma_ns': {'p': sigma_p, 'u': sigma_u}
         }
         plot_feat_dist(dist, width=linewidth,
