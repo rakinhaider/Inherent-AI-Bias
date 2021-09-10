@@ -6,8 +6,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 import numpy as np
-from ghost_unfairness.fair_dataset import FairDataset, default_mappings
-from ghost_unfairness.ds_fair_dataset import DSFairDataset
+from inherent_bias.fair_dataset import FairDataset, default_mappings
+from inherent_bias.ds_fair_dataset import DSFairDataset
 from copy import deepcopy
 from scipy.special import erf
 from math import sqrt

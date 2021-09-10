@@ -1,5 +1,5 @@
 import unittest
-from ghost_unfairness.geomnb import GeomNB
+from inherent_bias.geomnb import GeomNB
 import numpy as np
 
 

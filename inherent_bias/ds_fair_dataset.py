@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from ghost_unfairness.fair_dataset import FairDataset
-from ghost_unfairness.fair_dataset import (
+from inherent_bias.fair_dataset import FairDataset
+from inherent_bias.fair_dataset import (
     default_mappings, _validate_alpha_beta, _is_privileged, _get_groups
 )
 

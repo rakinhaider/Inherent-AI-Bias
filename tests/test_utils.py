@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
-from ghost_unfairness.fair_dataset import FairDataset
+from inherent_bias.fair_dataset import FairDataset
 from aif360.metrics import ClassificationMetric
-from ghost_unfairness.utils import (
+from inherent_bias.utils import (
     get_positive_rate, get_single_prot_default_map
 )
 

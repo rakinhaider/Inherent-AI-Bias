@@ -5,8 +5,8 @@ import pandas as pd
 from itertools import product
 
 from aif360.metrics import BinaryLabelDatasetMetric
-from ghost_unfairness.ds_fair_dataset import DSFairDataset
-from ghost_unfairness.fair_dataset import default_mappings
+from inherent_bias.ds_fair_dataset import DSFairDataset
+from inherent_bias.fair_dataset import default_mappings
 
 class TestDSFairDataset(TestCase):
     """Tests for Guttman R-Tree implementation"""

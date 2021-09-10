@@ -5,8 +5,8 @@ import pandas as pd
 from itertools import product
 
 from aif360.metrics import BinaryLabelDatasetMetric
-from ghost_unfairness.fair_dataset import FairDataset
-from ghost_unfairness.fair_dataset import(
+from inherent_bias.fair_dataset import FairDataset
+from inherent_bias.fair_dataset import(
     _get_groups, _is_privileged, default_mappings
 )
 

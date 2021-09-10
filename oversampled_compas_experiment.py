@@ -1,6 +1,6 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-from ghost_unfairness.sampling.synthetic_generator import(
+from inherent_bias.sampling.synthetic_generator import(
     synthetic
 )
 from aif360.datasets import(
@@ -15,8 +15,8 @@ from aif360.metrics.utils import(
     compute_num_pos_neg
 )
 import argparse
-from ghost_unfairness.mixed_model_nb import MixedModelNB
-from ghost_unfairness.utils import *
+from inherent_bias.mixed_model_nb import MixedModelNB
+from inherent_bias.utils import *
 
 
 def get_group_dicts(dataset):

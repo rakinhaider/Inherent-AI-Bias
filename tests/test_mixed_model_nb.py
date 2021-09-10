@@ -1,5 +1,5 @@
 import unittest
-from ghost_unfairness.mixed_model_nb import MixedModelNB
+from inherent_bias.mixed_model_nb import MixedModelNB
 import numpy as np
 from sklearn.naive_bayes import BernoulliNB
 

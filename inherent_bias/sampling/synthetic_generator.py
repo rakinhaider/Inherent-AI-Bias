@@ -4,7 +4,7 @@ import sys
 import random
 import numpy as np
 from aif360.metrics import utils
-from ghost_unfairness.sampling.myutils import balance
+from inherent_bias.sampling.myutils import balance
 
 # return dataset indices of unprivileged and privileaged groups
 def group_indices(dataset, unprivileged_groups):

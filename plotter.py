@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
 from scipy.special import erf
-from ghost_unfairness.utils import get_c123
+from inherent_bias.utils import get_c123
 import argparse
 
 

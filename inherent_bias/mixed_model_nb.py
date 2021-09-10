@@ -2,7 +2,7 @@ import numpy
 import numpy as np
 import pandas
 from sklearn.naive_bayes import _BaseNB, MultinomialNB, BernoulliNB
-from ghost_unfairness.geomnb import GeomNB
+from inherent_bias.geomnb import GeomNB
 from sklearn.utils import check_array
 
 
