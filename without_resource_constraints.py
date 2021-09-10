@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from ghost_unfairness.utils import *
 from sklearn.naive_bayes import GaussianNB
 import argparse

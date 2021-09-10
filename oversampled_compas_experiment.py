@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from ghost_unfairness.sampling.synthetic_generator import(
     synthetic
 )

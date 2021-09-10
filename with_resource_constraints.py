@@ -1,5 +1,8 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from ghost_unfairness.utils import *
 import argparse
+
 
 
 def print_model_performances(model, test_fd, res_constraint=None,
