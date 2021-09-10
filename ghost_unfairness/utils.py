@@ -299,7 +299,7 @@ def  get_model_performances(model, test_fd, pred_func, **kwargs):
 
 def print_table_row(is_header=False, alpha=None, p_perf=None,
                     u_perf=None, m_perf=None):
-    cols = ["\u03B1\t", "AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
+    cols = ["\u03B1", "AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
     if is_header:
         print("\t".join(cols))
     else:

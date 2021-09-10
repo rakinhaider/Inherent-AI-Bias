@@ -1,4 +1,5 @@
 from ghost_unfairness.utils import *
+import argparse
 
 
 def print_model_performances(model, test_fd, res_constraint=None,
@@ -46,44 +47,63 @@ def get_constrained_predictions(model, test_fd, res_constraint):
 
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sigma-1', default=2, type=int)
+    parser.add_argument('--sigma-2', default=5, type=int)
+    parser.add_argument('--mu_p_plus', default=13, type=int)
+    parser.add_argument('--mu_u_plus', default=10, type=int)
+    parser.add_argument('--delta', default=10, type=int)
+    parser.add_argument('--beta', default=1, type=int)
+    parser.add_argument('--n-samples', default=10000, type=int)
+    parser.add_argument('--n-redline', default=1, type=int)
+    parser.add_argument('--n-feature', default=0, type=int)
+    parser.add_argument('-r', '--resource', choices=['Low', 'High'],
+                        default='Low')
+    parser.add_argument('--tr-rs', default=47, type=int,
+                        help='Train Random Seed')
+    parser.add_argument('--te-rs', default=41, type=int,
+                        help='Test Random Seed')
+    args = parser.parse_args()
+
     protected = ["sex"]
     privileged_classes = [['Male']]
     metadata = default_mappings.copy()
     metadata['protected_attribute_maps'] = [{1.0: 'Male', 0.0: 'Female'}]
 
-    alpha = 0.5
-    beta = 1
-
     kwargs = {'protected_attribute_names': protected,
               'privileged_classes': [['Male']],
               'metadata': metadata,
               'favorable_classes': [1],
-              'beta': beta,
-              'alpha': alpha,
+              'beta': args.beta,
               'ds': True
               }
 
-    random_state = 47
-
     dist = {
-        'mu_ps': {'p': 13, 'u': 10},
-        'sigma_ps': {'p': 2, 'u': 5},
-        'mu_ns': {'p': 3, 'u': 0},
-        'sigma_ns': {'p': 2, 'u': 5}
+        'mu_ps': {'p': args.mu_p_plus, 'u': args.mu_u_plus},
+        'sigma_ps': {'p': args.sigma_1, 'u': args.sigma_2},
+        'mu_ns': {'p': args.mu_p_plus - args.delta,
+                  'u': args.mu_u_plus - args.delta},
+        'sigma_ns': {'p': args.sigma_1, 'u': args.sigma_2}
     }
 
     temp_dist = deepcopy(dist)
     kwargs['dist'] = temp_dist
     model_type = GaussianNB
+    n_samples = args.n_samples
+    n_redline = args.n_redline
+    n_feature = args.n_feature
 
     res_constraints = {'Low': 0.1, 'High': 0.9}
-    constraint = 'High'
+    constraint = args.resource
 
+    print_table_row(is_header=True)
     for alpha in [0.25, 0.5, 0.75]:
         kwargs['alpha'] = alpha
         kwargs['verbose'] = False
-        train_fd, test_fd = get_datasets(10000, 0, 1, kwargs,
-                                         test_random_state=41)
+        train_fd, test_fd = get_datasets(n_samples, n_feature, n_redline,
+                                         kwargs, train_random_state=args.tr_rs,
+                                         test_random_state=args.te_rs)
         pmod, pmod_results = get_groupwise_performance(train_fd, test_fd,
                                             model_type, privileged=True)
         umod, umod_results = get_groupwise_performance(train_fd, test_fd,

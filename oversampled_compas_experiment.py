@@ -187,26 +187,20 @@ def exp_compas_orig(params, verbose=False):
         print(*['{:.4f}'.format(i) for i in p_result], sep='\t')
         print(*['{:.4f}'.format(i) for i in u_result], sep='\t')
         print(*['{:.4f}'.format(i) for i in m_result], sep='\t')
-        print_model_performances(mod, test_orig_fd, verbose=True)
+        # print_model_performances(mod, test_orig_fd, verbose=True)
 
 
 if __name__ == "__main__":
     np.random.seed(23)
 
     args = argparse.ArgumentParser(
-            description="MixedModelCompasExperiment",
+            description="OversampleCompasExperiment",
     )
-    args.add_argument("-d", "--data",
-              choices=["compas", "german", "bank"],
-              default='compas'
-    )
-    args.add_argument('-m', '--model-type',
-                      choices=['gnb', 'mixednb'],
-                      default='mixednb'
-                      )
-    args.add_argument('-s', '--sample-mode',
-                      default=2
-                      )
+    args.add_argument("-d", "--data", choices=["compas"], default='compas')
+    args.add_argument('-m', '--model-type', choices=['gnb', 'mixednb'],
+                      default='mixednb')
+    args.add_argument('-s', '--sample-mode', default=2, type=int)
+    args.add_argument('--split', default=0.7, help='Train test split')
     args.add_argument('-r', '--random-seed', default=23)
 
     args = args.parse_args()
@@ -254,7 +248,8 @@ if __name__ == "__main__":
     print_table_row(is_header=True)
     for alpha in [0.25, 0.5, 0.75]:
         fd = get_real_fd(dataset_balanced, alpha=alpha)
-        train_fd, test_fd = fd.split([0.7], shuffle=True, seed=random_seed)
+        train_fd, test_fd = fd.split([args.split], shuffle=True,
+                                     seed=args.random_seed)
 
         train_x, train_y = train_fd.get_xy(keep_protected=False)
         bern_indices = [list(train_x.columns).index(c)
