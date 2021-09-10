@@ -264,3 +264,46 @@ def get_selection_rate(sigma_1, delta, r, alpha, priv, is_tp):
     c = c + c2 * c_alpha if is_tp else c - c2 * c_alpha
 
     return 0.5 + (1 if is_tp else -1) * 0.5 * erf(c)
+
+
+def get_predictions(model, test_fd):
+    test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=False)
+    return model.predict(test_fd_x)
+
+
+def  get_model_performances(model, test_fd, pred_func, **kwargs):
+    data = test_fd.copy()
+    data_pred = test_fd.copy()
+    data_pred.labels = pred_func(model, test_fd, **kwargs)
+
+    metrics = ClassificationMetric(
+        data, data_pred, privileged_groups=test_fd.privileged_groups,
+        unprivileged_groups=test_fd.unprivileged_groups)
+
+    perf = {}
+    perf['SR'] = metrics.selection_rate()
+
+    perf['AC_p'] = metrics.accuracy(privileged=True)
+    perf['SR_p'] = metrics.selection_rate(privileged=True)
+    perf['TPR_p'] = metrics.true_positive_rate(privileged=True)
+    perf['FPR_p'] = metrics.false_positive_rate(privileged=True)
+
+    perf['AC_u'] = metrics.accuracy(privileged=False)
+    perf['SR_u'] = metrics.selection_rate(privileged=False)
+    perf['TPR_u'] = metrics.true_positive_rate(privileged=False)
+    perf['FPR_u'] = metrics.false_positive_rate(privileged=False)
+    for k in perf:
+        perf[k] = perf[k] * 100
+    return perf
+
+
+def print_table_row(is_header=False, alpha=None, p_perf=None,
+                    u_perf=None, m_perf=None):
+    cols = ["\u03B1\t", "AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
+    if is_header:
+        print("\t".join(cols))
+    else:
+        row = ['{:.2f}'.format(alpha)]
+        row += ["{:04.1f}".format(d) for d in [p_perf['AC_p'], u_perf['AC_u']]]
+        row += ["{:04.1f}".format(m_perf[c]) for c in cols[3:]]
+        print("\t".join(row))

@@ -172,23 +172,13 @@ def plot_erf():
 
     plt.ylim(-1.1, 1.3)
     plt.xlim(-2.5, 2.5)
-    # plt.axvline(0, color='black')
-    # plt.axhline(0, color='black')
     plt.xlabel('x')
     plt.ylabel('erf(x)')
     plt.tight_layout()
 
     mid_points = [(c1 + c3) / 2, (c1 + c3) / 2 + c2 * calpha,
                   (c1 + c3) / 2 - c2 * calpha]
-    mid_texts = [r'$c_{mid}$',
-                 r'$c_{mid} + c_2 c_{\alpha}$',
-                 r'$c_{mid} - c_2 c_{\alpha}$']
     plt.plot(mid_points, [erf(i) for i in mid_points], 'o', color='black')
-
-    ax = plt.gca()
-    for i, p in enumerate(mid_points[:-1]):
-        # ax.annotate(mid_texts[i], (p, erf(p) + 0.2))
-        pass
 
     plt.plot([c1 + c2 * calpha, c3 + c2 * calpha],
              [erf(i) for i in [c1 + c2 * calpha, c3 + c2 * calpha]],
@@ -214,16 +204,12 @@ if __name__ == "__main__":
     out_dir = 'outputs/figures/'
 
     if what == 'erf':
-        print(matplotlib.rcParams['axes.titlepad'])
         set_rcparams(fontsize=10, titlepad=3,
                      labelpad=1, markersize=4)
 
-        print(matplotlib.rcParams['font.size'])
         plt.gcf().set_size_inches(set_size(linewidth, 0.95, 0.6))
         plot_erf()
-        print(plt.gcf().get_size_inches())
         fname = 'erf_plot.pdf'
-        print(matplotlib.rcParams['axes.titlepad'])
 
     elif what == 'featdist':
         set_rcparams()

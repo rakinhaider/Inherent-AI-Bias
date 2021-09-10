@@ -1,5 +1,5 @@
 import unittest
-from oversampled_fair_dataset import *
+from oversampled_compas_experiment import *
 from aif360.datasets import BinaryLabelDataset
 import pandas as pd
 

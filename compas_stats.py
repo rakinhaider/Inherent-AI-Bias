@@ -18,7 +18,8 @@ def get_base_rates(dataset):
 
 if __name__ == "__main__":
     # Load the raw file.
-    df = pd.read_csv('C:/Python38_64/Lib/site-packages/aif360/data/raw/compas/compas-scores-two-years.csv')
+    df = pd.read_csv('C:/Python38_64/Lib/site-packages/aif360/data/raw/'
+                     'compas/compas-scores-two-years.csv')
 
     dataset = load_preproc_data_compas(protected_attributes=['race'])
     get_base_rates(dataset)

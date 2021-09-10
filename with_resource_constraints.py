@@ -1,9 +1,3 @@
-import sys
-
-import matplotlib.pyplot as plt
-import numpy as np
-from sklearn.naive_bayes import GaussianNB
-
 from ghost_unfairness.utils import *
 
 
@@ -14,17 +8,12 @@ def print_model_performances(model, test_fd, res_constraint=None,
     data_pred = test_fd.copy()
 
     if res_constraint:
-        favourable_index = np.where(model.classes_ == test_fd.favorable_label)
-        predict_proba = model.predict_proba(test_fd_x)[:,favourable_index[0][0]]
-        indices = np.argsort(predict_proba)
-        indices = indices[-int(np.ceil(len(predict_proba) * res_constraint)):]
-        predictions = np.zeros(len(predict_proba))
-        predictions[indices] = 1
+        predictions = get_constrained_predictions(
+            model, test_fd, res_constraint=res_constraint)
         data_pred.labels = mod_pred = predictions
     else:
         data_pred.labels = mod_pred = model.predict(test_fd_x)
 
-    # print(mod_pred)
     metrics = ClassificationMetric(data, data_pred,
                 privileged_groups=test_fd.privileged_groups,
                 unprivileged_groups=test_fd.unprivileged_groups)
@@ -32,19 +21,28 @@ def print_model_performances(model, test_fd, res_constraint=None,
     print(metrics.binary_confusion_matrix())
     print('SR\t', metrics.selection_rate())
 
-    # print('PCNFM\t', metrics.binary_confusion_matrix(privileged=True))
     if print_acc:
         print('PACC\t', metrics.accuracy(privileged=True))
     print('PSR\t', metrics.selection_rate(privileged=True))
     print('PFPR\t', metrics.false_positive_rate(privileged=True))
     print('PFDR\t', metrics.false_discovery_rate(privileged=True))
-    # print('UCNFM\t', metrics.binary_confusion_matrix(privileged=False))
     if print_acc:
         print('UACC\t', metrics.accuracy(privileged=False))
     print('USR\t', metrics.selection_rate(privileged=False))
     print('UFPR\t', metrics.false_positive_rate(privileged=False))
     print('UFDR\t', metrics.false_discovery_rate(privileged=False))
     return metrics, mod_pred
+
+
+def get_constrained_predictions(model, test_fd, res_constraint):
+    test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=False)
+    favourable_index = np.where(model.classes_ == test_fd.favorable_label)
+    predict_proba = model.predict_proba(test_fd_x)[:, favourable_index[0][0]]
+    indices = np.argsort(predict_proba)
+    indices = indices[-int(np.ceil(len(predict_proba) * res_constraint)):]
+    predictions = np.zeros(len(predict_proba))
+    predictions[indices] = 1
+    return predictions
 
 
 if __name__ == "__main__":
@@ -76,14 +74,12 @@ if __name__ == "__main__":
 
     temp_dist = deepcopy(dist)
     kwargs['dist'] = temp_dist
-    print(kwargs['dist'])
     model_type = GaussianNB
 
     res_constraints = {'Low': 0.1, 'High': 0.9}
     constraint = 'High'
 
     for alpha in [0.25, 0.5, 0.75]:
-        print('alpha', alpha)
         kwargs['alpha'] = alpha
         kwargs['verbose'] = False
         train_fd, test_fd = get_datasets(10000, 0, 1, kwargs,
@@ -95,28 +91,14 @@ if __name__ == "__main__":
         mod, _ = get_groupwise_performance(train_fd, test_fd,
                                            model_type, privileged=None)
 
-        print(test_fd.privileged_groups)
-
-        """
-        print('pmod_results', *['{:.4f}'.format(i) for i in pmod_results],
-              sep='\t')
-        print('umod_results', *['{:.4f}'.format(i) for i in umod_results],
-              sep='\t')
-        """
-        print('pmod')
-        pmod_metrics, pmod_pred = print_model_performances(pmod, test_fd,
-            res_constraint=res_constraints[constraint], print_acc=True
-        )
-        print('umod')
-        umod_metrics, umod_pred = print_model_performances(umod, test_fd,
-            res_constraint=res_constraints[constraint], print_acc=True
-        )
-        print('mod')
-        mod_metrics, mod_pred = print_model_performances(mod, test_fd,
-            res_constraint=res_constraints[constraint], print_acc=True
-        )
-        """
-        print('Accuracies')
-        print(mod_metrics.accuracy(), mod_metrics.accuracy(privileged=True),
-              mod_metrics.accuracy(privileged=False))
-        """
+        p_perf = get_model_performances(
+            pmod, test_fd, get_constrained_predictions,
+            res_constraint=res_constraints[constraint])
+        u_perf = get_model_performances(
+            umod, test_fd, get_constrained_predictions,
+            res_constraint=res_constraints[constraint])
+        m_perf = get_model_performances(
+            mod, test_fd, get_constrained_predictions,
+            res_constraint=res_constraints[constraint])
+        print_table_row(is_header=False, alpha=alpha, p_perf=p_perf,
+                        u_perf=u_perf, m_perf=m_perf)

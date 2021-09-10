@@ -1,8 +1,0 @@
-di_col = 'disparate_impact'
-opt_acc_col = 'Opt_Acc'
-p_acc_col = 'Priv_Acc'
-u_acc_col = 'Unpriv_Acc'
-p_tp_col = 'Priv_True_pos'
-p_fp_col = 'Priv_False_pos'
-u_tp_col = 'Unpriv_True_pos'
-u_fp_col = 'Unpriv_False_pos'

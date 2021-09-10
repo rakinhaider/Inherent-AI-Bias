@@ -62,3 +62,16 @@ class Test_MixedModelNB(unittest.TestCase):
         g.fit(x, self.y)
         g._joint_log_likelihood(x)
         g.predict(x)
+
+    def test_only_bern(self):
+        bern_x = np.array([[0], [0], [1], [1]])
+        x = np.concatenate([self.x, bern_x], axis=1)
+        g = MixedModelNB(alpha=1, multinom_indices=[], geom_indices=[],
+                         bern_indices=[0, 1, 2, 3, 4, 5])
+        g.fit(x, self.y)
+
+        g.predict(x)
+        bern_mod = BernoulliNB(alpha=1)
+        bern_mod.fit(x, self.y)
+        assert np.allclose(g._joint_log_likelihood(x),
+                           bern_mod._joint_log_likelihood(x))
