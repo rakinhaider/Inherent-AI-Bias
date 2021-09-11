@@ -29,10 +29,14 @@ printf "\nTable 6: Model performances for less separable
 unprivileged group with 2 features and surplus resources\n"
 python3 -m with_resource_constraints -r High
 
+printf "\nTable 7: Model performances on COMPAS original
+and de-biased\n"
+python3 inherent_bias/exp7/fair_ml.py
+
 printf "\nTable 8: Model performances for COMPAS SFBD
 de-biased by inflating privileged unfavored class\n"
 python3 -m oversampled_compas_experiment --sample-mode 1
 
-printf "\nModel performances for COMPAS SFBD
+printf "\nTable 9: Model performances for COMPAS SFBD
 de-biased by inflating unprivileged favored class\n"
 python3 -m oversampled_compas_experiment --sample-mode 2
