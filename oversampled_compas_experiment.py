@@ -1,13 +1,7 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from inherent_bias.sampling.synthetic_generator import(
     synthetic
 )
-from aif360.datasets import(
-    GermanDataset, BankDataset
-)
-from aif360.algorithms.preprocessing.optim_preproc_helpers.\
-    data_preproc_functions import load_preproc_data_compas
 from aif360.metrics import (BinaryLabelDatasetMetric as BM)
 from sklearn.svm import SVC
 from aif360.metrics.utils import(
@@ -17,6 +11,9 @@ from aif360.metrics.utils import(
 import argparse
 from inherent_bias.mixed_model_nb import MixedModelNB
 from inherent_bias.utils import *
+from utils import get_dataset
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 def get_group_dicts(dataset):
@@ -129,36 +126,6 @@ def fix_balanced_dataset(dataset):
     lf = len(dataset.features)
     ls = len(dataset.scores)
     assert li == lf and lf == ls
-
-
-def get_dataset(dataset_name):
-    if dataset_name == 'compas':
-        dataset = load_preproc_data_compas(protected_attributes=['race'])
-    elif dataset_name == 'german':
-        dataset = GermanDataset(
-            # this dataset also contains protected
-            # attribute for "sex" which we do not
-            # consider in this evaluation
-            protected_attribute_names=['age'],
-            # age >=25 is considered privileged
-            privileged_classes=[lambda x: x >= 25],
-            # ignore sex-related attributes
-            features_to_drop=['personal_status', 'sex'],
-        )
-    elif dataset_name == 'bank':
-        dataset = BankDataset(
-            # this dataset also contains protected
-            protected_attribute_names=['age'],
-            privileged_classes=[lambda x: x >= 25],  # age >=25 is considered privileged
-        )
-        dataset.metadata['protected_attribute_maps'] = [{1.0: 'yes', 0.0: 'no'}]
-        temp = dataset.favorable_label
-        dataset.favorable_label = dataset.unfavorable_label
-        dataset.unfavorable_label = temp
-    else:
-        raise ValueError('Dataset name must be one of '
-                         'compas, german, bank')
-    return dataset
 
 
 def exp_compas_orig(params, verbose=False):

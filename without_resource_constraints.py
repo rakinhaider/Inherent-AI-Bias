@@ -1,27 +1,15 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import warnings
+warnings.simplefilter(action='ignore')
 from inherent_bias.utils import *
-from sklearn.naive_bayes import GaussianNB
-import argparse
+from utils import get_parser, get_estimator
 
+# Suppresing tensorflow warning
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--sigma-1', default=2, type=int)
-    parser.add_argument('--sigma-2', default=5, type=int)
-    parser.add_argument('--mu_p_plus', default=13, type=int)
-    parser.add_argument('--mu_u_plus', default=10, type=int)
-    parser.add_argument('--delta', default=10, type=int)
-    parser.add_argument('--beta', default=1, type=int)
-    parser.add_argument('--n-samples', default=10000, type=int)
-    parser.add_argument('--n-redline', default=1, type=int)
-    parser.add_argument('--n-feature', default=0, type=int)
-    parser.add_argument('--tr-rs', default=47, type=int,
-                        help='Train Random Seed')
-    parser.add_argument('--te-rs', default=41, type=int,
-                        help='Test Random Seed')
-    args = parser.parse_args()
+    args = get_parser().parse_args()
 
     protected = ["sex"]
     privileged_classes = [['Male']]
@@ -46,13 +34,13 @@ if __name__ == "__main__":
     }
     temp_dist = deepcopy(dist)
     kwargs['dist'] = temp_dist
-    model_type = GaussianNB
+    estimator = get_estimator(args.estimator, args.reduce)
+    keep_prot = args.reduce
     n_samples = args.n_samples
     n_redline = args.n_redline
     n_feature = args.n_feature
 
     print_table_row(is_header=True)
-
     for alpha in [0.25, 0.5, 0.75]:
         kwargs['alpha'] = alpha
         kwargs['verbose'] = False
@@ -60,20 +48,23 @@ if __name__ == "__main__":
                                          kwargs, train_random_state=args.tr_rs,
                                          test_random_state=args.te_rs)
         pmod, pmod_results = get_groupwise_performance(train_fd, test_fd,
-                                                       model_type,
+                                                       estimator,
                                                        privileged=True,
                                                        pos_rate=False)
         umod, umod_results = get_groupwise_performance(train_fd, test_fd,
-                                                       model_type,
+                                                       estimator,
                                                        privileged=False,
                                                        pos_rate=False)
         mod, mod_results = get_groupwise_performance(train_fd, test_fd,
-                                                     model_type,
+                                                     estimator,
                                                      privileged=None,
                                                      pos_rate=False)
 
-        p_perf = get_model_performances(pmod, test_fd, get_predictions)
-        u_perf = get_model_performances(umod, test_fd, get_predictions)
-        m_perf = get_model_performances(mod, test_fd, get_predictions)
+        p_perf = get_model_performances(pmod, test_fd,
+                                        get_predictions, keep_prot=keep_prot)
+        u_perf = get_model_performances(umod, test_fd,
+                                        get_predictions, keep_prot=keep_prot)
+        m_perf = get_model_performances(mod, test_fd,
+                                        get_predictions, keep_prot=keep_prot)
         print_table_row(is_header=False, alpha=alpha, p_perf=p_perf,
                         u_perf=u_perf, m_perf=m_perf)

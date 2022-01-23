@@ -1,3 +1,4 @@
+import warnings
 from aif360.metrics import (
     BinaryLabelDatasetMetric,
     ClassificationMetric
@@ -12,8 +13,11 @@ from copy import deepcopy
 from scipy.special import erf
 from math import sqrt
 import scipy.stats as stats
-import math
 import matplotlib.pyplot as plt
+from aif360.sklearn.inprocessing import ExponentiatedGradientReduction
+from aif360.algorithms.inprocessing import PrejudiceRemover
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def get_single_prot_default_map():
     metadata = default_mappings.copy()
@@ -49,13 +53,17 @@ def get_positive_rate(cmetrics, privileged=None, positive=True):
 
 def get_classifier_metrics(clf, data,
                            verbose=False,
-                           sel_rate=False):
+                           sel_rate=False, keep_prot=False):
     unprivileged_groups = data.unprivileged_groups
     privileged_groups = data.privileged_groups
 
     data_pred = data.copy()
-    data_x, data_y = data.get_xy(keep_protected=False)
-    data_pred.labels = clf.predict(data_x)
+    data_x, data_y = data.get_xy(keep_protected=keep_prot)
+    if isinstance(clf, PrejudiceRemover):
+        data.labels = data.labels.astype(int)
+        data_pred = clf.predict(data)
+    else:
+        data_pred.labels = clf.predict(data_x)
 
     metrics = ClassificationMetric(data,
                                    data_pred,
@@ -135,19 +143,24 @@ def get_datasets(n_samples, n_features, n_redlin, kwargs,
     return train_fd, test_fd
 
 
-def train_model(model_type, data, params):
-    x, y = data.get_xy(keep_protected=False)
+def train_model(model_type, data, params, keep_prot=False):
+    x, y = data.get_xy(keep_protected=keep_prot)
 
     model = model_type(**params)
     # params[variant] = val
     # model.set_params(**params)
-
-    model = model.fit(x, y)
+    if model_type == PrejudiceRemover:
+        data.labels = data.labels.astype(int)
+        # print(data.protected_attributes)
+        # print(data.protected_attributes.sum())
+        model = model.fit(data)
+    else:
+        model = model.fit(x, y)
 
     return model
 
 
-def get_groupwise_performance(train_fd, test_fd, model_type,
+def get_groupwise_performance(train_fd, test_fd, estimator,
                               privileged=None,
                               params=None,
                               pos_rate=False,
@@ -155,22 +168,23 @@ def get_groupwise_performance(train_fd, test_fd, model_type,
                               unprivileged_group=None):
     if privileged:
         train_fd = train_fd.get_privileged_group()
-        
+
     elif privileged == False:
         train_fd = train_fd.get_unprivileged_group()
 
     if not params:
-        params = get_model_params(model_type)
+        params = get_model_params(estimator, train_fd)
 
-    model = train_model(model_type, train_fd, params)
+    keep_prot = (estimator == ExponentiatedGradientReduction)
+    model = train_model(estimator, train_fd, params, keep_prot=keep_prot)
     results = get_classifier_metrics(model, test_fd,
                                      verbose=False,
-                                     sel_rate=pos_rate)
+                                     sel_rate=pos_rate, keep_prot=keep_prot)
 
     return model, results
 
 
-def get_model_params(model_type):
+def get_model_params(model_type, train_fd):
     if model_type == DecisionTreeClassifier:
         params = {'criterion': 'entropy',
                   'max_depth': 5,
@@ -181,6 +195,13 @@ def get_model_params(model_type):
     elif model_type == GaussianNB:
         # params = {'priors':[0.1, 0.9]}
         params = {}
+    elif model_type == ExponentiatedGradientReduction:
+        params = {
+            'prot_attr': train_fd.protected_attribute_names,
+            'estimator': LogisticRegression(solver='liblinear'),
+            'constraints': "DemographicParity",
+            'drop_prot_attr': True
+        }
     else:
         params = {}
     return params
@@ -231,7 +252,8 @@ def report(delta_mu_c, delta_mu_a, sigma_u, sigma_p, verbose=True):
 def plot_normal(mu, sigma, label=None):
     x = np.linspace(mu - 3*sigma, mu + 3*sigma, 100)
     plt.plot(x, stats.norm.pdf(x, mu, sigma), label=label)
-    
+
+
 def plot_non_linear_boundary(mu1, mu2, sigma1, sigma2, p, d, label=None):
     x = np.linspace(-200, 200, 10000)
     y = np.log(p/(1-p)) - d*np.log(sigma1/sigma1) 
@@ -266,15 +288,19 @@ def get_selection_rate(sigma_1, delta, r, alpha, priv, is_tp):
     return 0.5 + (1 if is_tp else -1) * 0.5 * erf(c)
 
 
-def get_predictions(model, test_fd):
-    test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=False)
-    return model.predict(test_fd_x)
+def get_predictions(model, test_fd, keep_prot=False):
+    test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=keep_prot)
+    if isinstance(model, PrejudiceRemover):
+        return model.predict(test_fd).labels
+    else:
+        return model.predict(test_fd_x)
 
 
-def  get_model_performances(model, test_fd, pred_func, **kwargs):
+def get_model_performances(model, test_fd, pred_func,
+                           keep_prot=False, **kwargs):
     data = test_fd.copy()
     data_pred = test_fd.copy()
-    data_pred.labels = pred_func(model, test_fd, **kwargs)
+    data_pred.labels = pred_func(model, test_fd, keep_prot=keep_prot, **kwargs)
 
     metrics = ClassificationMetric(
         data, data_pred, privileged_groups=test_fd.privileged_groups,

@@ -1,8 +1,8 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from inherent_bias.utils import *
-import argparse
+from utils import get_parser, get_estimator
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 def print_model_performances(model, test_fd, res_constraint=None,
@@ -38,9 +38,13 @@ def print_model_performances(model, test_fd, res_constraint=None,
     return metrics, mod_pred
 
 
-def get_constrained_predictions(model, test_fd, res_constraint):
-    test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=False)
-    favourable_index = np.where(model.classes_ == test_fd.favorable_label)
+def get_constrained_predictions(model, test_fd, keep_prot, res_constraint):
+    test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=keep_prot)
+    if isinstance(model, PrejudiceRemover):
+        favourable_index = test_fd.favorable_label
+        print(favourable_index)
+    else:
+        favourable_index = np.where(model.classes_ == test_fd.favorable_label)
     predict_proba = model.predict_proba(test_fd_x)[:, favourable_index[0][0]]
     indices = np.argsort(predict_proba)
     indices = indices[-int(np.ceil(len(predict_proba) * res_constraint)):]
@@ -51,22 +55,9 @@ def get_constrained_predictions(model, test_fd, res_constraint):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--sigma-1', default=2, type=int)
-    parser.add_argument('--sigma-2', default=5, type=int)
-    parser.add_argument('--mu_p_plus', default=13, type=int)
-    parser.add_argument('--mu_u_plus', default=10, type=int)
-    parser.add_argument('--delta', default=10, type=int)
-    parser.add_argument('--beta', default=1, type=int)
-    parser.add_argument('--n-samples', default=10000, type=int)
-    parser.add_argument('--n-redline', default=1, type=int)
-    parser.add_argument('--n-feature', default=0, type=int)
+    parser = get_parser()
     parser.add_argument('-r', '--resource', choices=['Low', 'High'],
                         default='Low')
-    parser.add_argument('--tr-rs', default=47, type=int,
-                        help='Train Random Seed')
-    parser.add_argument('--te-rs', default=41, type=int,
-                        help='Test Random Seed')
     args = parser.parse_args()
 
     protected = ["sex"]
@@ -92,13 +83,14 @@ if __name__ == "__main__":
 
     temp_dist = deepcopy(dist)
     kwargs['dist'] = temp_dist
-    model_type = GaussianNB
+    estimator = get_estimator(args.estimator, args.reduce)
+    keep_prot = args.reduce
     n_samples = args.n_samples
     n_redline = args.n_redline
     n_feature = args.n_feature
 
     res_constraints = {'Low': 0.1, 'High': 0.9}
-    constraint = args.resource
+    constraint = res_constraints[args.resource]
 
     print_table_row(is_header=True)
     for alpha in [0.25, 0.5, 0.75]:
@@ -108,20 +100,22 @@ if __name__ == "__main__":
                                          kwargs, train_random_state=args.tr_rs,
                                          test_random_state=args.te_rs)
         pmod, pmod_results = get_groupwise_performance(train_fd, test_fd,
-                                            model_type, privileged=True)
+                                                       estimator,
+                                                       privileged=True)
         umod, umod_results = get_groupwise_performance(train_fd, test_fd,
-                                            model_type, privileged=False)
+                                                       estimator,
+                                                       privileged=False)
         mod, _ = get_groupwise_performance(train_fd, test_fd,
-                                           model_type, privileged=None)
+                                           estimator, privileged=None)
 
         p_perf = get_model_performances(
             pmod, test_fd, get_constrained_predictions,
-            res_constraint=res_constraints[constraint])
+            keep_prot=keep_prot, res_constraint=constraint)
         u_perf = get_model_performances(
             umod, test_fd, get_constrained_predictions,
-            res_constraint=res_constraints[constraint])
+            keep_prot=keep_prot, res_constraint=constraint)
         m_perf = get_model_performances(
             mod, test_fd, get_constrained_predictions,
-            res_constraint=res_constraints[constraint])
+            keep_prot=keep_prot, res_constraint=constraint)
         print_table_row(is_header=False, alpha=alpha, p_perf=p_perf,
                         u_perf=u_perf, m_perf=m_perf)
