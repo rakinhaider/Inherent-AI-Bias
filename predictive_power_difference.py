@@ -10,7 +10,7 @@ from sklearn.naive_bayes import GaussianNB, CategoricalNB
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from inherent_bias.utils import get_datasets
-from aif360.datasets.compas_dataset import default_mappings
+from sklearn.model_selection import cross_val_score
 
 
 def get_dataset_properties(dataset):
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     prop = get_dataset_properties(args.dataset)
     prot_attr = prop['prot_attr']
     prot_attr_vals = prop['orders'][prot_attr]
-    ppds = pd.DataFrame(columns=['mppd', 'sppd'], dtype=object)
+    ppds = pd.Series(dtype=object)
 
     for c, t in zip(X.columns, X.dtypes):
 
@@ -113,21 +113,14 @@ if __name__ == "__main__":
         else:
             clf = GaussianNB()
         print(c, t, clf)
-        for i in range(10):
-            train_X, test_X, train_y, test_y = train_test_split(
-                X, y, test_size=0.4)
 
-            accs = [0, 0]
-            for i, prot_attr_val in enumerate(prot_attr_vals):
-                sub_train_X = train_X[train_X[prot_attr] == i][[c]]
-                sub_train_y = train_y[sub_train_X.index]
-                clf.fit(sub_train_X, sub_train_y)
-                sub_test_X = test_X[test_X[prot_attr] == i][[c]]
-                sub_test_y = test_y[sub_test_X.index]
-                pred = clf.predict(sub_test_X)
-                accs[i] = accuracy_score(sub_test_y, pred)
+        accs = [0, 0]
+        for i, prot_attr_val in enumerate(prot_attr_vals):
+            sub_X = X[X[prot_attr] == i][[c]]
+            sub_y = y[sub_X.index]
+            accs[i] = cross_val_score(clf, sub_X, sub_y, cv=10)
 
-        ppds[c] = abs(accs[1] - accs[0])
+        ppds[c] = abs(accs[0].mean() - accs[1].mean())
 
     ppds.sort_values(ascending=False, inplace=True)
     ppds.to_csv(os.path.join('outputs/ppds', args.dataset + '.csv'),
