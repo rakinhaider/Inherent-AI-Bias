@@ -9,7 +9,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from aif360.sklearn.inprocessing import ExponentiatedGradientReduction
-from aif360.algorithms.inprocessing import PrejudiceRemover
+from prejudice_remover import PrejudiceRemover
 
 
 def get_parser():

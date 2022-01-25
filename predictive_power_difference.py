@@ -7,8 +7,6 @@ from aif360.sklearn.datasets import (
 )
 from pandas import CategoricalDtype
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split
 from inherent_bias.utils import get_datasets
 from sklearn.model_selection import cross_val_score
 

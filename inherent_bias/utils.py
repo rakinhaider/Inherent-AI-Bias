@@ -15,9 +15,10 @@ from math import sqrt
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 from aif360.sklearn.inprocessing import ExponentiatedGradientReduction
-from aif360.algorithms.inprocessing import PrejudiceRemover
+from prejudice_remover import PrejudiceRemover
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore')
+
 
 def get_single_prot_default_map():
     metadata = default_mappings.copy()
@@ -59,11 +60,7 @@ def get_classifier_metrics(clf, data,
 
     data_pred = data.copy()
     data_x, data_y = data.get_xy(keep_protected=keep_prot)
-    if isinstance(clf, PrejudiceRemover):
-        data.labels = data.labels.astype(int)
-        data_pred = clf.predict(data)
-    else:
-        data_pred.labels = clf.predict(data_x)
+    data_pred.labels = clf.predict(data_x)
 
     metrics = ClassificationMetric(data,
                                    data_pred,
@@ -149,13 +146,8 @@ def train_model(model_type, data, params, keep_prot=False):
     model = model_type(**params)
     # params[variant] = val
     # model.set_params(**params)
-    if model_type == PrejudiceRemover:
-        data.labels = data.labels.astype(int)
-        # print(data.protected_attributes)
-        # print(data.protected_attributes.sum())
-        model = model.fit(data)
-    else:
-        model = model.fit(x, y)
+
+    model = model.fit(x, y)
 
     return model
 
@@ -166,6 +158,7 @@ def get_groupwise_performance(train_fd, test_fd, estimator,
                               pos_rate=False,
                               privileged_group=None,
                               unprivileged_group=None):
+
     if privileged:
         train_fd = train_fd.get_privileged_group()
 
@@ -175,7 +168,7 @@ def get_groupwise_performance(train_fd, test_fd, estimator,
     if not params:
         params = get_model_params(estimator, train_fd)
 
-    keep_prot = (estimator == ExponentiatedGradientReduction)
+    keep_prot = (estimator == ExponentiatedGradientReduction) or (estimator == PrejudiceRemover)
     model = train_model(estimator, train_fd, params, keep_prot=keep_prot)
     results = get_classifier_metrics(model, test_fd,
                                      verbose=False,
@@ -201,6 +194,14 @@ def get_model_params(model_type, train_fd):
             'estimator': LogisticRegression(solver='liblinear'),
             'constraints': "DemographicParity",
             'drop_prot_attr': True
+        }
+    elif model_type == PrejudiceRemover:
+        params = {
+            'sensitive_attr': train_fd.protected_attribute_names[0],
+            'class_attr': train_fd.label_names[0],
+            'favorable_label': train_fd.favorable_label,
+            'all_sensitive_attributes': train_fd.protected_attribute_names,
+            'privileged_value': 1.0
         }
     else:
         params = {}
@@ -290,10 +291,7 @@ def get_selection_rate(sigma_1, delta, r, alpha, priv, is_tp):
 
 def get_predictions(model, test_fd, keep_prot=False):
     test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=keep_prot)
-    if isinstance(model, PrejudiceRemover):
-        return model.predict(test_fd).labels
-    else:
-        return model.predict(test_fd_x)
+    return model.predict(test_fd_x)
 
 
 def get_model_performances(model, test_fd, pred_func,
@@ -325,11 +323,11 @@ def get_model_performances(model, test_fd, pred_func,
 
 def print_table_row(is_header=False, alpha=None, p_perf=None,
                     u_perf=None, m_perf=None):
-    cols = ["\u03B1", "AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
+    cols = ["alpha", "AC_p", "AC_u", "SR_p", "SR_u", "FPR_p", "FPR_u"]
     if is_header:
-        print("\t".join(cols))
+        print("\t & \t".join(cols))
     else:
         row = ['{:.2f}'.format(alpha)]
         row += ["{:04.1f}".format(d) for d in [p_perf['AC_p'], u_perf['AC_u']]]
         row += ["{:04.1f}".format(m_perf[c]) for c in cols[3:]]
-        print("\t".join(row))
+        print("\t & \t".join(row))

@@ -1,14 +1,13 @@
 import os
 import warnings
-warnings.simplefilter(action='ignore')
 from inherent_bias.utils import *
 from utils import get_parser, get_estimator
 
 # Suppresing tensorflow warning
+warnings.simplefilter(action='ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == "__main__":
-
     args = get_parser().parse_args()
 
     protected = ["sex"]
@@ -35,7 +34,7 @@ if __name__ == "__main__":
     temp_dist = deepcopy(dist)
     kwargs['dist'] = temp_dist
     estimator = get_estimator(args.estimator, args.reduce)
-    keep_prot = args.reduce
+    keep_prot = args.reduce or (args.estimator == 'pr')
     n_samples = args.n_samples
     n_redline = args.n_redline
     n_feature = args.n_feature

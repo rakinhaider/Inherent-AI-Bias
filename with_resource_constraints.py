@@ -40,11 +40,7 @@ def print_model_performances(model, test_fd, res_constraint=None,
 
 def get_constrained_predictions(model, test_fd, keep_prot, res_constraint):
     test_fd_x, test_fd_y = test_fd.get_xy(keep_protected=keep_prot)
-    if isinstance(model, PrejudiceRemover):
-        favourable_index = test_fd.favorable_label
-        print(favourable_index)
-    else:
-        favourable_index = np.where(model.classes_ == test_fd.favorable_label)
+    favourable_index = np.where(model.classes_ == test_fd.favorable_label)
     predict_proba = model.predict_proba(test_fd_x)[:, favourable_index[0][0]]
     indices = np.argsort(predict_proba)
     indices = indices[-int(np.ceil(len(predict_proba) * res_constraint)):]
@@ -84,7 +80,7 @@ if __name__ == "__main__":
     temp_dist = deepcopy(dist)
     kwargs['dist'] = temp_dist
     estimator = get_estimator(args.estimator, args.reduce)
-    keep_prot = args.reduce
+    keep_prot = args.reduce or (args.estimator == 'pr')
     n_samples = args.n_samples
     n_redline = args.n_redline
     n_feature = args.n_feature
