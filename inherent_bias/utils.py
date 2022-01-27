@@ -6,6 +6,7 @@ from aif360.metrics import (
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
 import numpy as np
 from inherent_bias.fair_dataset import FairDataset, default_mappings
 from inherent_bias.ds_fair_dataset import DSFairDataset
@@ -14,8 +15,7 @@ from scipy.special import erf
 from math import sqrt
 import scipy.stats as stats
 import matplotlib.pyplot as plt
-from aif360.sklearn.inprocessing import ExponentiatedGradientReduction
-from prejudice_remover import PrejudiceRemover
+from fairml import ExponentiatedGradientReduction, PrejudiceRemover
 
 warnings.simplefilter(action='ignore')
 
@@ -178,7 +178,9 @@ def get_groupwise_performance(train_fd, test_fd, estimator,
 
 
 def get_model_params(model_type, train_fd):
-    if model_type == DecisionTreeClassifier:
+    if model_type == SVC:
+        params = {'probability': True}
+    elif model_type == DecisionTreeClassifier:
         params = {'criterion': 'entropy',
                   'max_depth': 5,
                   'random_state': 47}

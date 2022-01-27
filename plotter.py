@@ -17,10 +17,10 @@ def set_rcparams(**kwargs):
         "font.family": "serif",
         "font.serif": "Times New Roman",
         "font.size": fontsize,
-        "axes.labelsize": fontsize,
-        "axes.titlesize": 'medium',
-        "xtick.labelsize": 'x-small',
-        "ytick.labelsize": 'x-small',
+        "axes.labelsize": 'x-small',
+        "axes.titlesize": 'x-small',
+        "xtick.labelsize": 'xx-small',
+        "ytick.labelsize": 'xx-small',
         "mathtext.fontset": 'cm',
         "mathtext.default": 'bf',
         # "figure.figsize": set_size(width, fraction)
@@ -110,21 +110,49 @@ def plot_feat_dist(dist, **kwargs):
         ]
     ]
 
-    for i, row in enumerate(ax):
-        for j, a in enumerate(row):
+    # for i, row in enumerate(ax):
+    #     for j, a in enumerate(row):
+    for j, row in enumerate(ax):
+        for i, a in enumerate(row):
             mus = combs[i][j][0]
             sigmas = combs[i][j][1]
             plot_normal(mus[0], sigmas[0], a)
             plot_normal(mus[1], sigmas[1], a)
             left, right = combs[i][j][2]
+            a.set_xticks([int(i) for i in np.linspace(left, right, 5)])
+            a.set_yticks([0, 0.1, 0.2])
             a.set_xlim(left, right)
             a.set_ylim(-0.01, 0.22)
+
+    """
+    ax[0][0].set_xlabel(r'$x_1$')
+    ax[0][0].set_ylabel('probability')
+    ax[0][1].set_xlabel(r'$x_2$')
+    ax[0][1].set_ylabel('probability')
+
+    ax[1][0].set_xlabel(r'$x_1$')
+    ax[1][0].set_ylabel('probability')
+    ax[1][1].set_xlabel(r'$x_2$')
+    ax[1][1].set_ylabel('probability')
 
     ax[0][0].set_title('Test Scores')
     ax[0][1].set_title('GPA')
 
     ax[0][0].set_ylabel('Privileged')
     ax[1][0].set_ylabel('Unprivileged')
+    """
+    ax[0][0].set_xlabel(r'$x_1$ (Test Score)')
+    ax[0][0].set_ylabel(r'$\mathcal{N}(\mu_1, \sigma_1)$')
+    ax[0][1].set_xlabel(r'$x_1$ (Test Score)')
+    ax[0][1].set_ylabel(r'$\mathcal{N}(\mu_1, \sigma_1)$')
+
+    ax[1][0].set_xlabel(r'$x_2$ (GPA)')
+    ax[1][0].set_ylabel(r'$\mathcal{N}(\mu_2, \sigma_2)$')
+    ax[1][1].set_xlabel(r'$x_2$ (GPA)')
+    ax[1][1].set_ylabel(r'$\mathcal{N}(\mu_2, \sigma_2)$')
+
+    ax[0][0].set_title('Privileged')
+    ax[0][1].set_title('Unprivileged')
 
     plt.tight_layout()
     # plt.subplots_adjust(wspace=0.25)
@@ -152,13 +180,13 @@ def plot_erf(sigma_1, sigma_2, delta, alpha):
 
     ax = plt.gca()
 
-    ax.annotate(texts[0], (points[0] - 0.2, erf(points[0]) + 0.05),
+    ax.annotate(texts[0], (points[0] - 0.2, erf(points[0]) + 0.10),
                 rotation=-75)
     ax.annotate(texts[1], (points[1] - 0.15, erf(points[1]) + 0.1),
                 rotation=-75)
     ax.annotate(texts[2], (points[2] + 0.02, erf(points[2]) - 1.3),
                 rotation=-75)
-    ax.annotate(texts[3], (points[3] - 0.4, erf(points[3]) + 0.07),
+    ax.annotate(texts[3], (points[3] - 0.4, erf(points[3]) + 0.15),
                 rotation=-75)
 
     ax.annotate(texts[4], (points[4] - 0.05, erf(points[4]) - 1.3),
@@ -170,7 +198,6 @@ def plot_erf(sigma_1, sigma_2, delta, alpha):
     plt.xlim(-2.5, 2.5)
     plt.xlabel('x')
     plt.ylabel('erf(x)')
-    plt.tight_layout()
 
     mid_points = [(c1 + c3) / 2, (c1 + c3) / 2 + c2 * calpha,
                   (c1 + c3) / 2 - c2 * calpha]
@@ -190,6 +217,7 @@ def plot_erf(sigma_1, sigma_2, delta, alpha):
              [erf(c1 - c2 * calpha), erf(c3 - c2 * calpha)], color='black')
     plt.plot([c3 - c2 * calpha, c1 - c2 * calpha],
              [erf(c3 - c2 * calpha), erf(c3 - c2 * calpha)], color='black')
+    plt.tight_layout()
 
 
 if __name__ == "__main__":
@@ -203,6 +231,8 @@ if __name__ == "__main__":
     parser.add_argument('--delta', default=10, type=int)
     parser.add_argument('--alpha', default=0.25, type=float)
     parser.add_argument('--width', default=239, type=int)
+    parser.add_argument('--fraction', default=0.95, type=float)
+    parser.add_argument('--fontsize', default=10, type=int)
     args = parser.parse_args()
     # textwidth = 505
     linewidth = args.width
@@ -210,15 +240,15 @@ if __name__ == "__main__":
     out_dir = 'outputs/figures/'
 
     if what == 'erf':
-        set_rcparams(fontsize=10, titlepad=3,
+        set_rcparams(fontsize=args.fontsize, titlepad=3,
                      labelpad=1, markersize=4)
 
-        plt.gcf().set_size_inches(set_size(linewidth, 0.95, 0.6))
+        plt.gcf().set_size_inches(set_size(linewidth, args.fraction, 0.6))
         plot_erf(args.sigma_1, args.sigma_2, args.delta, args.alpha)
         fname = 'erf_plot.pdf'
 
     elif what == 'featdist':
-        set_rcparams(fontsize=7)
+        set_rcparams(fontsize=args.fontsize)
         mu_p_plus, mu_u_plus, = args.mu_p_plus, args.mu_u_plus
         mu_p_minus, mu_u_minus = mu_p_plus - args.delta, mu_u_plus - args.delta
         sigma_p, sigma_u = args.sigma_1, args.sigma_2
@@ -229,10 +259,11 @@ if __name__ == "__main__":
             'sigma_ns': {'p': sigma_p, 'u': sigma_u}
         }
         plot_feat_dist(dist, width=linewidth,
-                       fraction=0.95, aspect_ratio=0.7)
+                       fraction=args.fraction, aspect_ratio=0.7)
         fname = '{}-{}-{}-{}-{}-{}.pdf'.format(
             dist['mu_ps']['p'], dist['mu_ps']['u'],
             dist['mu_ns']['p'], dist['mu_ns']['u'],
             dist['sigma_ps']['p'], dist['sigma_ps']['u'])
 
+    print(plt.gcf().get_size_inches())
     plt.savefig(out_dir + fname, format='pdf')

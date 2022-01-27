@@ -8,8 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
-from aif360.sklearn.inprocessing import ExponentiatedGradientReduction
-from prejudice_remover import PrejudiceRemover
+from fairml import ExponentiatedGradientReduction, PrejudiceRemover
 
 
 def get_parser():

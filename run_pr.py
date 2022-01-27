@@ -1,7 +1,6 @@
 ### Dummy test Not actual
-import numpy as np
 from aif360.sklearn.datasets.compas_dataset import fetch_compas
-from prejudice_remover import PrejudiceRemover
+from fairml.prejudice_remover import PrejudiceRemover
 from predictive_power_difference import encode_categories
 
 if __name__ == "__main__":

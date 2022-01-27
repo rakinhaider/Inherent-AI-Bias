@@ -100,7 +100,9 @@ if __name__ == "__main__":
     prop = get_dataset_properties(args.dataset)
     prot_attr = prop['prot_attr']
     prot_attr_vals = prop['orders'][prot_attr]
-    ppds = pd.Series(dtype=object)
+    ppds = pd.DataFrame(dtype=object,
+                        columns=['pp_p_avg', 'pp_p_max', 'pp_p_min',
+                                 'pp_u_avg', 'pp_u_max', 'pp_u_min', 'diff'])
 
     for c, t in zip(X.columns, X.dtypes):
 
@@ -118,8 +120,14 @@ if __name__ == "__main__":
             sub_y = y[sub_X.index]
             accs[i] = cross_val_score(clf, sub_X, sub_y, cv=10)
 
-        ppds[c] = abs(accs[0].mean() - accs[1].mean())
+        ppds = ppds.append(pd.Series(
+                [i * 100 for i in
+                [accs[0].mean(), accs[0].max(), accs[0].min(),
+                accs[1].mean(), accs[1].max(), accs[1].min(),
+                accs[0].mean() - accs[1].mean()]], index=ppds.columns, name=c))
+        # ppds[c]['pp_p'] = accs[0].mean()
+        # ppds[c]['pp_u'] = accs[1].mean()
 
-    ppds.sort_values(ascending=False, inplace=True)
+    ppds.sort_values(by=['diff'], ascending=False, inplace=True)
     ppds.to_csv(os.path.join('outputs/ppds', args.dataset + '.csv'),
-                sep='\t')
+                sep='\t', float_format="%0.2f")
