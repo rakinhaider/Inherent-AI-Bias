@@ -1,4 +1,4 @@
-# Collected from Yan Zhou
+# Collected from XXXX-3 XXX-4
 
 # to run the code: python fair_ml.py -d dataset
 # where dataset is one of the datasets: adult, german, compas, bank 

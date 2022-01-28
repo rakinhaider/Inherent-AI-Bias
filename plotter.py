@@ -124,23 +124,6 @@ def plot_feat_dist(dist, **kwargs):
             a.set_xlim(left, right)
             a.set_ylim(-0.01, 0.22)
 
-    """
-    ax[0][0].set_xlabel(r'$x_1$')
-    ax[0][0].set_ylabel('probability')
-    ax[0][1].set_xlabel(r'$x_2$')
-    ax[0][1].set_ylabel('probability')
-
-    ax[1][0].set_xlabel(r'$x_1$')
-    ax[1][0].set_ylabel('probability')
-    ax[1][1].set_xlabel(r'$x_2$')
-    ax[1][1].set_ylabel('probability')
-
-    ax[0][0].set_title('Test Scores')
-    ax[0][1].set_title('GPA')
-
-    ax[0][0].set_ylabel('Privileged')
-    ax[1][0].set_ylabel('Unprivileged')
-    """
     ax[0][0].set_xlabel(r'$x_1$ (Test Score)')
     ax[0][0].set_ylabel(r'$\mathcal{N}(\mu_1, \sigma_1)$')
     ax[0][1].set_xlabel(r'$x_1$ (Test Score)')

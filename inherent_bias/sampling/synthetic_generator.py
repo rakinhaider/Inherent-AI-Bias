@@ -1,4 +1,4 @@
-# Collected from Yan Zhou
+# Collected from XXXX-3 XXXX-4
 
 import sys
 import random
