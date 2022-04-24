@@ -216,6 +216,7 @@ if __name__ == "__main__":
     parser.add_argument('--width', default=239, type=int)
     parser.add_argument('--fraction', default=0.95, type=float)
     parser.add_argument('--fontsize', default=10, type=int)
+    parser.add_argument('--filetype', default='pdf', type=str)
     args = parser.parse_args()
     # textwidth = 505
     linewidth = args.width
@@ -243,10 +244,10 @@ if __name__ == "__main__":
         }
         plot_feat_dist(dist, width=linewidth,
                        fraction=args.fraction, aspect_ratio=0.7)
-        fname = '{}-{}-{}-{}-{}-{}.pdf'.format(
+        fname = '{}-{}-{}-{}-{}-{}.{}'.format(
             dist['mu_ps']['p'], dist['mu_ps']['u'],
             dist['mu_ns']['p'], dist['mu_ns']['u'],
-            dist['sigma_ps']['p'], dist['sigma_ps']['u'])
+            dist['sigma_ps']['p'], dist['sigma_ps']['u'], args.filetype)
 
     print(plt.gcf().get_size_inches())
-    plt.savefig(out_dir + fname, format='pdf')
+    plt.savefig(out_dir + fname, format=args.filetype)

@@ -195,6 +195,8 @@ def get_model_params(model_type, train_fd):
             'prot_attr': train_fd.protected_attribute_names,
             'estimator': LogisticRegression(solver='liblinear'),
             'constraints': "DemographicParity",
+            # The following was used to test Yan's suggestion
+            # 'conraints': "TruePositiveRateDifference",
             'drop_prot_attr': True
         }
     elif model_type == PrejudiceRemover:
