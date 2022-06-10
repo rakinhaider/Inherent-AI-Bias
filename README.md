@@ -91,4 +91,4 @@ Left blank for review purpose.
 
 ## Reference
 <a id="1" href="https://arxiv.org/abs/2105.04534">[1]
-Zhou, Y., Kantarcioglu, M., & Clifton, C. (2021). Improving Fairness of AI Systems with Lossless De-biasing. arXiv preprint arXiv:2105.04534.</a> 
+Improving Fairness of AI Systems with Lossless De-biasing. arXiv preprint arXiv:2105.04534.</a> 
