@@ -68,9 +68,11 @@ def set_size(width, fraction=1, aspect_ratio='golden'):
     return fig_width_in, fig_height_in
 
 
-def plot_normal(mu, sigma, ax, label=None):
+def plot_normal(mu, sigma, ax, label=None,
+                linestyle='dotted', color='blue'):
     x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
-    ax.plot(x, stats.norm.pdf(x, mu, sigma), label=label)
+    ax.plot(x, stats.norm.pdf(x, mu, sigma), linestyle=linestyle,
+            color=color, label=label)
 
 
 def plot_feat_dist(dist, **kwargs):
@@ -116,8 +118,14 @@ def plot_feat_dist(dist, **kwargs):
         for i, a in enumerate(row):
             mus = combs[i][j][0]
             sigmas = combs[i][j][1]
-            plot_normal(mus[0], sigmas[0], a)
-            plot_normal(mus[1], sigmas[1], a)
+            if mus[0] == mus[1]:
+                plot_normal(mus[0], sigmas[0], a, linestyle='dashdot',
+                            color='#8c564b')
+            else:
+                plot_normal(mus[0], sigmas[0], a, linestyle='dotted',
+                            color='#1f77b4')
+                plot_normal(mus[1], sigmas[1], a, linestyle='dashed',
+                            color='#ff7f0e')
             left, right = combs[i][j][2]
             a.set_xticks([int(i) for i in np.linspace(left, right, 5)])
             a.set_yticks([0, 0.1, 0.2])

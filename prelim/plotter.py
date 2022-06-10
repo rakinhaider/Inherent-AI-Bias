@@ -85,7 +85,6 @@ def plot_grouped_bars(data, ranges, colors, measures,
                       selection_criteria={},
                       **kwargs):
 
-    print(x_key)
     xs = kwargs[x_key+'s']
     data = data.copy(deep=True)
     for key in selection_criteria:
@@ -100,6 +99,8 @@ def plot_grouped_bars(data, ranges, colors, measures,
 
     fig, ax = plt.subplots(len(xs), len(measures),
                            figsize=plt.gcf().get_size_inches())
+    if ax.ndim == 1:
+        ax = [ax]
     for i, val in enumerate(xs):
         if x_key == 'alpha':
             ax[i][0].set_ylabel(r'$\alpha =$ ' + '{:.2f}'.format(val))
@@ -116,11 +117,16 @@ def plot_grouped_bars(data, ranges, colors, measures,
             cur_ax.legend_.remove()
             cur_ax.set_ylim(ranges[j][i][0], ranges[j][i][1])
             cur_ax.set_axisbelow(True)
+            cur_ax.set_xlabel(y_key)
+            if kwargs.get('force_gap', False):
+                gap = kwargs['gap']
+            else:
+                gap = (ranges[j][i][1] - ranges[j][i][0]) * 0.05
+
             annotate_bars(cur_ax, afont_size=kwargs['afont_size'],
                           arotation=kwargs['arotation'],
                           # gap=kwargs['gap'])
-                          gap=(ranges[j][i][1] - ranges[j][i][0]) * 0.05)
-
+                          gap=gap)
             for tick in cur_ax.get_xticklabels():
                 tick.set_rotation(0)
     plt.tight_layout()
@@ -143,7 +149,8 @@ if __name__ == "__main__":
                    'srp', 'sru', 'fprp', 'fpru']
     elif what == 'eq':
         fname = 'eq_n_2'
-        headers = ['alpha', 'accp', 'accu', 'srp', 'sru', 'fprp', 'fpru']
+        headers = ['model', 'alpha', 'accp', 'accu',
+                   'srp', 'sru', 'fprp', 'fpru']
     elif what == 'compas_mode':
         fname = 'compas_mode'
         headers = ['mode', 'alpha', 'accp', 'accu',
@@ -165,19 +172,25 @@ if __name__ == "__main__":
               ['lightcoral', 'firebrick'],
               ['cyan', 'royalblue']]
     if what == 'eq':
-        ranges[2][0] = [0, 10]
-        ranges[2][1] = [0, 20]
-        ranges[2][2] = [0, 20]
-        plot_bar_graphs(data, ranges, colors, alphas, measures)
-    elif what == 'grp':
-        afont_size = 10
-        alphas.remove(0.5)
-        for r in ranges:
-            r.pop(1)
+        ranges = [[[90, 105]],
+                  [[20, 90]],
+                  [[0, 30]]]
         plot_grouped_bars(data, ranges, colors, measures,
-                          selection_criteria={'alpha': alphas},
+                          x_key='model', y_key='alpha',
+                          models=['NBC'],
+                          afont_size=10,
+                          arotation=90,
+                          gap=2.5)
+    elif what == 'grp':
+        ranges = [[[80, 110], [80, 110], [80, 110]],
+                  [[10, 100], [10, 100], [10, 100]],
+                  [[0, 75], [0, 75], [0, 75]]]
+        afont_size = 7
+        plot_grouped_bars(data, ranges, colors, measures,
+                          x_key='method', y_key='alpha',
+                          methods=['NBC', 'PR', 'RBC'],
                           alphas=alphas, afont_size=afont_size,
-                          arotation=90, gap=1.5)
+                          arotation=0, gap=0, force_gap=True)
     elif what == 'res':
         ranges = [[[30, 110], [30, 110], [30, 110]],
                   [[0, 30], [78, 105], [0, 110]],
@@ -196,7 +209,7 @@ if __name__ == "__main__":
         plot_grouped_bars(data, ranges, colors, measures,
                           x_key='mode', y_key='alpha',
                           modes=['Priv. Unfavored', 'Unpriv. Favored'],
-                          afont_size=10,
+                          afont_size=8,
                           arotation=90,
                           gap=5)
 

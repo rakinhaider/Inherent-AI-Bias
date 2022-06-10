@@ -109,8 +109,8 @@ def plot_decision_boundaries(X, y, s, model,
     else:
         plt.scatter(X[:, 0], X[:, 1], c=y, alpha=0.8)
     plt.contourf(xx, yy, Z, alpha=0.2)
-    plt.xlabel("Feature-1", fontsize=15)
-    plt.ylabel("Feature-2", fontsize=15)
+    plt.xlabel(r'$x_1$', fontsize=15)
+    plt.ylabel(r'$x_2$', fontsize=15)
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
     return plt

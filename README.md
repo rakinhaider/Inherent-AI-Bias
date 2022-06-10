@@ -25,6 +25,15 @@ system configurations.
 | Python  | 3.8.10                        |
 | pip     |  20.0.2                             |
 
+### Randomization Seeds
+The following seeds where used to ensure reproducibility of the results. Further experiments can be carried out by trying out different randomization seeds.
+
+|  Case                         |  Seed    |
+| ------- | ------------------------------|
+| Training SFBD Generation      |   47  |
+| Test SFBD Generation          |   41  |
+| COMPAS train test split       |   23  |
+
 ### Getting Started
 
 Create a virtual environment and activate it with the following
