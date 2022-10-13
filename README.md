@@ -1,4 +1,4 @@
-# Unfair AI: It Isn't Just the Data
+# Unfair AI: It Isn't Just Biased Data
 
 ## Description
 
