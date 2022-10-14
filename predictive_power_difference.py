@@ -127,7 +127,8 @@ if __name__ == "__main__":
                 accs[0].mean() - accs[1].mean()]], index=ppds.columns, name=c))
         # ppds[c]['pp_p'] = accs[0].mean()
         # ppds[c]['pp_u'] = accs[1].mean()
-
+    
+    ppds.index.name='Features'
     ppds.sort_values(by=['diff'], ascending=False, inplace=True)
     ppds.to_csv(os.path.join('outputs/ppds', args.dataset + '.csv'),
                 sep='\t', float_format="%0.2f")

@@ -7,3 +7,4 @@ outputs/**/*
 myvenv/**/*
 venv/**/*
 inherent_bias/exp7/**/*
+results.txt

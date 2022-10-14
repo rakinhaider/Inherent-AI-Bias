@@ -1,11 +1,5 @@
-import os
-import warnings
 from inherent_bias.utils import *
 from utils import get_parser, get_estimator
-
-# Suppresing tensorflow warning
-warnings.simplefilter(action='ignore')
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == "__main__":
     args = get_parser().parse_args()
