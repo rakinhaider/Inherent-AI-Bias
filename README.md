@@ -88,7 +88,9 @@ Please ignore **tensorflow** related warnings.
 ## Authors
 
 Chowdhury Mohammad Rakin Haider
+
 Chris Clifton
+
 Yan Zhou
 
 ## Reference
