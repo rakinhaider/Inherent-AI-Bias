@@ -36,7 +36,8 @@ python3 -m oversampled_compas_experiment --sample-mode 2
 mkdir -p outputs/ppds/
 printf "\nTable V: PREDICTIVE POWERS OF EACH FEATURE IN COMPAS DATASET\n"
 python3 -m predictive_power_difference --dataset compas >/dev/null
-awk -F'\t' 'BEGIN{OFS="\t";}{print $1, $2, $5, $8;} outputs/ppds/compas.csv'
+awk -F'\t' 'BEGIN{OFS="\t";}{print $1, $2, $5, $8;}' outputs/ppds/compas.csv
+printf "\n"
 
 printf "#################### Additional results ############################"
 
@@ -81,8 +82,8 @@ printf "\nTable f: Predictive powers of features in German Credit and
 Bank dataset\n"
 printf "\nDataset: Bank\n"
 python3 -m predictive_power_difference --dataset bank >/dev/null
-awk -F'\t' 'BEGIN{OFS="\t";}{print $1, $2, $5, $8;} outputs/ppds/compas.csv'
+awk -F'\t' 'BEGIN{OFS="\t";}{print $1, $2, $5, $8;}' outputs/ppds/compas.csv
 printf "\nDataset: German Credit\n"
 python3 -m predictive_power_difference --dataset german >/dev/null
-awk -F'\t' 'BEGIN{OFS="\t";}{print $1, $2, $5, $8;} outputs/ppds/compas.csv'
+awk -F'\t' 'BEGIN{OFS="\t";}{print $1, $2, $5, $8;}' outputs/ppds/compas.csv
 
