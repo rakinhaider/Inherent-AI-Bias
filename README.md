@@ -87,8 +87,10 @@ Please ignore **tensorflow** related warnings.
 
 ## Authors
 
-Left blank for review purpose.
+Chowdhury Mohammad Rakin Haider
+Chris Clifton
+Yan Zhou
 
 ## Reference
 <a id="1" href="https://arxiv.org/abs/2105.04534">[1]
-Improving Fairness of AI Systems with Lossless De-biasing. arXiv preprint arXiv:2105.04534.</a> 
+Yan Zhou, Murat Kantarcioglu, and Chris Clifton. "Improving fairness of ai systems with lossless de-biasing." arXiv preprint arXiv:2105.04534 (2021). arXiv preprint arXiv:2105.04534.</a> 
